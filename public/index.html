@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#181818">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="TermBridge">
+<title>TermBridge</title>
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="stylesheet" href="/vendor/xterm.css">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div id="app">
+
+  <header id="panelHeader">
+    <div id="tabStrip" class="tab-strip" role="tablist" data-i18n-aria="hdr.tabs" aria-label="ターミナル タブ"></div>
+    <div class="panel-actions">
+      <button id="btnNew" class="icon-btn" data-i18n-title="hdr.newTitle" data-i18n-aria="hdr.new" title="新しいターミナル (Ctrl+Shift+`)" aria-label="新しいターミナル">
+        <svg viewBox="0 0 16 16"><path d="M8 3.5v9M3.5 8h9" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round"/></svg>
+      </button>
+      <button id="btnPick" class="icon-btn narrow" data-i18n-title="hdr.profile" data-i18n-aria="hdr.profile" title="プロファイルの選択" aria-label="プロファイルの選択">
+        <svg viewBox="0 0 16 16"><path d="M4.5 6.5 8 10l3.5-3.5" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <span class="action-sep"></span>
+      <button id="btnKill" class="icon-btn" data-i18n-title="hdr.kill" data-i18n-aria="hdr.kill" title="ターミナルの強制終了" aria-label="ターミナルの強制終了">
+        <svg viewBox="0 0 16 16"><path d="M3 5h10M6.5 5V3.5h3V5M4.5 5l.6 8h5.8l.6-8M6.8 7.5v3.5M9.2 7.5v3.5" stroke="currentColor" stroke-width="1.1" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+    <div class="header-spacer"></div>
+  </header>
+
+  <main id="main">
+    <div id="termArea">
+      <div id="termHost"></div>
+      <div id="emptyState" hidden>
+        <p class="empty-title" data-i18n="empty.title">アクティブなターミナルはありません</p>
+        <div id="emptyButtons"></div>
+        <p class="empty-hint" data-i18n-html="empty.hint"><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>`</kbd> で新しいターミナルを開きます</p>
+      </div>
+      <div id="mobWrap" hidden><pre id="mobHist"></pre><pre id="mobLive"></pre></div>
+      <button id="scrollBottom" class="scroll-pill" data-i18n="scroll.bottom" hidden>▼ 最新へ</button>
+    </div>
+  </main>
+
+  <div id="panelBackdrop" hidden aria-hidden="true"></div>
+
+  <div id="keybar" hidden>
+    <button data-seq="&#27;">Esc</button>
+    <button data-seq="&#9;">Tab</button>
+    <button id="keyCtrl" class="toggle">Ctrl</button>
+    <button data-seq="&#3;">^C</button>
+    <button id="keyPaste" data-i18n="key.paste">貼り付け</button>
+    <span class="keybar-spacer"></span>
+    <button id="keyKb" data-i18n-title="key.keyboard" title="キーボードを開閉">⌨</button>
+    <button data-seq="&#27;[A">↑</button>
+    <button data-seq="&#27;[B">↓</button>
+    <button data-seq="&#27;[D">←</button>
+    <button data-seq="&#27;[C">→</button>
+  </div>
+
+  <nav id="mNav" data-i18n-aria="nav.main" aria-label="メインメニュー">
+    <button id="navTabs">
+      <span class="nav-ico">
+        <svg viewBox="0 0 16 16"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M4.3 6.2 6.6 8.3 4.3 10.4M8.4 10.6h3.3" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span id="navCount" class="nav-badge">0</span>
+      </span>
+      <span class="nav-label" data-i18n="nav.tabs">タブ</span>
+    </button>
+    <button id="navFiles">
+      <span class="nav-ico"><svg viewBox="0 0 16 16"><path d="M1.5 4a1 1 0 0 1 1-1h3l1.5 2h6.5a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1z" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg></span>
+      <span class="nav-label" data-i18n="nav.files">ファイル</span>
+    </button>
+    <button id="navMemo">
+      <span class="nav-ico"><svg viewBox="0 0 16 16"><path d="M3.5 2.5h9v11h-9zM5.5 5.5h5M5.5 8h5M5.5 10.5h3" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span class="nav-label" data-i18n="nav.memo">メモ</span>
+    </button>
+  </nav>
+
+  <footer id="statusBar">
+    <div class="status-left">
+      <span id="remoteChip" class="remote-chip">
+        <svg viewBox="0 0 16 16"><path d="M9.5 1.5 4 9h3.2L6.5 14.5 12 7H8.8z" fill="currentColor"/></svg>
+        <span id="remoteLabel">接続中…</span>
+      </span>
+      <span id="connState" class="status-item"></span>
+    </div>
+    <div class="status-right">
+      <span id="presence" class="status-item" title=""></span>
+      <button id="setBtn" class="status-item status-btn" data-i18n-title="status.settings" data-i18n-aria="status.settings" title="設定" aria-label="設定">
+        <svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="2.4" fill="none" stroke="currentColor" stroke-width="1.1"/><path d="M8 1.6v2M8 12.4v2M1.6 8h2M12.4 8h2M3.5 3.5l1.4 1.4M11.1 11.1l1.4 1.4M12.5 3.5l-1.4 1.4M4.9 11.1l-1.4 1.4" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>
+      </button>
+      <button id="fileToggle" class="status-item status-btn" data-i18n-title="status.explorer" title="エクスプローラー">
+        <svg viewBox="0 0 16 16"><path d="M1.5 4a1 1 0 0 1 1-1h3l1.5 2h6.5a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1z" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"/></svg>
+        <span data-i18n="status.files">ファイル</span>
+      </button>
+      <button id="memoToggle" class="status-item status-btn" data-i18n-title="status.memoTitle" title="メモ（全端末で同期）">
+        <svg viewBox="0 0 16 16"><path d="M3.5 2.5h9v11h-9zM5.5 5.5h5M5.5 8h5M5.5 10.5h3" stroke="currentColor" stroke-width="1.1" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span data-i18n="status.memo">メモ</span>
+      </button>
+    </div>
+  </footer>
+
+  <div id="exPanel" class="ex-panel" hidden>
+    <div class="ex-toolbar">
+      <button id="exBtnBack" class="icon-btn" data-i18n-title="ex.back" title="戻る" disabled>
+        <svg viewBox="0 0 16 16"><path d="M10.5 3.5 6 8l4.5 4.5" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <button id="exBtnFwd" class="icon-btn" data-i18n-title="ex.fwd" title="進む" disabled>
+        <svg viewBox="0 0 16 16"><path d="M5.5 3.5 10 8l-4.5 4.5" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <button id="exBtnUp" class="icon-btn" data-i18n-title="ex.up" title="上へ">
+        <svg viewBox="0 0 16 16"><path d="M8 12.5v-9M3.5 8 8 3.5 12.5 8" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <input id="exAddr" class="ex-addr" spellcheck="false" autocomplete="off" data-i18n-aria="ex.addr" aria-label="アドレス">
+      <button id="exBtnRefresh" class="icon-btn" data-i18n-title="ex.refresh" title="最新の情報に更新">
+        <svg viewBox="0 0 16 16"><path d="M13 8a5 5 0 1 1-1.5-3.5M13 2.5v3h-3" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <button id="exBtnHidden" class="icon-btn" title="隠し項目を表示" aria-label="隠し項目を表示">
+        <svg class="ex-eye-open" viewBox="0 0 16 16" aria-hidden="true"><path d="M1.5 8s2.2-3.5 6.5-3.5S14.5 8 14.5 8s-2.2 3.5-6.5 3.5S1.5 8 1.5 8z" fill="none" stroke="currentColor" stroke-width="1.2"/><circle cx="8" cy="8" r="1.8" fill="none" stroke="currentColor" stroke-width="1.2"/></svg>
+        <svg class="ex-eye-closed" viewBox="0 0 16 16" aria-hidden="true"><path d="M1.5 8s2.2-3.5 6.5-3.5S14.5 8 14.5 8s-2.2 3.5-6.5 3.5S1.5 8 1.5 8z" fill="none" stroke="currentColor" stroke-width="1.2"/><circle cx="8" cy="8" r="1.8" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="m2 2 12 12" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+      </button>
+      <span class="action-sep"></span>
+      <button id="exBtnNewDir" class="icon-btn" data-i18n-title="ex.newDir" title="新しいフォルダー">
+        <svg viewBox="0 0 16 16"><path d="M1.5 4a1 1 0 0 1 1-1h3l1.5 2h6.5a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1z" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"/><path d="M8 7.5v4M6 9.5h4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+      </button>
+      <button id="exBtnNewFile" class="icon-btn" data-i18n-title="ex.newFile" title="新しいファイル">
+        <svg viewBox="0 0 16 16"><path d="M4 1.5h5.5L12.5 5v9.5h-8.5z" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"/><path d="M8.2 7.5v4M6.2 9.5h4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+      </button>
+      <span class="action-sep"></span>
+      <button id="exBtnClose" class="icon-btn" data-i18n-title="ex.closeEsc" title="閉じる (Esc)">
+        <svg viewBox="0 0 16 16"><path d="M4.5 4.5l7 7m0-7l-7 7" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+    <div class="ex-cols">
+      <button data-key="name" class="ex-cell-name" data-i18n="ex.colName">名前</button>
+      <button data-key="mtime" class="ex-cell-mtime" data-i18n="ex.colMtime">更新日時</button>
+      <button data-key="type" class="ex-cell-type" data-i18n="ex.colType">種類</button>
+      <button data-key="size" class="ex-cell-size" data-i18n="ex.colSize">サイズ</button>
+    </div>
+    <div id="exList" class="ex-list" tabindex="0" data-i18n-aria="ex.list" aria-label="ファイル一覧"></div>
+    <div class="ex-status"><span id="exCount"></span><div id="exPins" data-i18n-aria="ex.pins" aria-label="ピン留め"></div><span id="exMsg"></span></div>
+  </div>
+
+  <div id="tabSheet" hidden>
+    <div class="sheet-backdrop"></div>
+    <div class="sheet-panel">
+      <div class="sheet-grip"></div>
+      <div class="sheet-title" data-i18n="sheet.title">ターミナル</div>
+      <div id="sheetTabs"></div>
+      <div id="sheetShells"></div>
+    </div>
+  </div>
+
+  <div id="toast" hidden></div>
+  <input type="file" id="wpInput" accept="image/*" hidden>
+
+  <div id="wpOpacityDialog" class="overlay" hidden>
+    <div class="quick-input wallpaper-opacity-dialog" role="dialog" aria-modal="true" aria-labelledby="wpOpacityTitle">
+      <div id="wpOpacityTitle" class="quick-input-title" data-i18n="wp.opacityTitle">壁紙の透明度</div>
+      <div class="wallpaper-opacity-row">
+        <input id="wpOpacity" type="range" min="0" max="100" step="1" data-i18n-aria="wp.opacityTitle" aria-label="壁紙の透明度">
+        <output id="wpOpacityValue" for="wpOpacity">38%</output>
+      </div>
+      <div class="quick-input-actions">
+        <button id="wpOpacityCancel" type="button" data-i18n="auth.close">閉じる</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="memoPanel" class="memo-panel" hidden>
+    <div class="memo-head">
+      <span class="memo-title" data-i18n="memo.title">メモ</span>
+      <span id="memoState" class="memo-state"></span>
+      <button id="memoClose" class="icon-btn" data-i18n-title="memo.closeTitle" data-i18n-aria="memo.close" title="閉じる" aria-label="メモを閉じる">
+        <svg viewBox="0 0 16 16"><path d="M4.5 4.5l7 7m0-7l-7 7" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+    <textarea id="memoText" data-i18n-ph="memo.placeholder" placeholder="コマンドや作業メモをここに。全端末でリアルタイム同期されます。" spellcheck="false"></textarea>
+  </div>
+
+  <div id="menu" class="menu" hidden></div>
+
+  <div id="authOverlay" class="overlay" hidden>
+    <div class="quick-input">
+      <div class="quick-input-title" data-i18n="auth.title">アクセストークンを入力</div>
+      <input id="authInput" type="password" data-i18n-ph="auth.placeholder" placeholder="TERMBRIDGE_TOKEN の値" autocomplete="off">
+      <div class="quick-input-hint" data-i18n="auth.hint">Enter で接続します</div>
+    </div>
+  </div>
+
+</div>
+<script src="/vendor/xterm.js"></script>
+<script src="/vendor/addon-fit.js"></script>
+<script src="/vendor/addon-web-links.js"></script>
+<script src="/vendor/addon-unicode11.js"></script>
+<script src="/vendor/addon-webgl.js"></script>
+<script src="/i18n.js"></script>
+<script src="/app.js"></script>
+</body>
+</html>

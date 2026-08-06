@@ -1,0 +1,19 @@
+# Dependencies and bundled runtime
+node_modules/
+runtime/
+
+# Local data written at runtime
+logs/
+wallpapers/
+memo.txt
+pins.json
+
+# Local settings (holds the token — never commit)
+config.json
+
+# Editor / OS / local tooling
+.vscode/
+.idea/
+.claude/
+Thumbs.db
+desktop.ini
