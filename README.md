@@ -129,7 +129,7 @@ nothing to learn before you can use it.
 - [Node.js](https://nodejs.org/) 20 or newer
   - Alternatively, drop a portable Node at `runtime\node\node.exe` and nothing gets
     installed system-wide
-- [Tailscale](https://tailscale.com/) — required only to reach the machine from other devices
+- [Tailscale](https://tailscale.com/) — needed to reach the machine from any other device. Without it TermBridge still runs, but only on this PC
 
 ## Install
 
@@ -141,33 +141,39 @@ npm install
 
 ## Quick start
 
-Double-click `start.bat`. The console prints the URLs to open:
+Double-click `start.bat`. It prints where it is listening — and, the first time,
+what is still missing:
 
 ```
 [termbridge] host: MY-PC  shells: powershell, cmd, gitbash  default: powershell
-[termbridge] http://100.x.y.z:7070/
 [termbridge] http://127.0.0.1:7070/
+[termbridge] no https endpoint yet, so only this machine can reach the app.
+[termbridge] run: powershell -ExecutionPolicy Bypass -File scripts\enable-https.ps1
 ```
 
-Open the first URL on any device signed into the same tailnet. That's it.
-
-Then turn on https — it is one command and it is worth doing straight away:
+That address works on this PC. To reach it from your phone or another machine, run
+the script it names — once; the setting survives reboots:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts\enable-https.ps1
 ```
 
-This puts `tailscale serve` in front of the app, and from then on the console
-prints an `https://<machine>.<tailnet>.ts.net/` address. Use that one.
+It puts `tailscale serve` in front of the app. From then on, startup prints the
+address to use everywhere else:
 
-**Paste is the reason.** Browsers only hand over the OS clipboard in a secure
-context, so over plain http `Ctrl+V` cannot read what you copied somewhere else and
-you are left with right-click → Paste. Over https it just works. Installing it to
-the home screen as a PWA also requires https.
+```
+[termbridge] https://my-pc.tailname.ts.net/  <- open this on your other devices
+```
+
+**Why not just the tailnet IP?** Because a browser only hands the OS clipboard to a
+page in a secure context. Over plain http, `Ctrl+V` cannot read what you copied
+somewhere else and you are stuck with right-click → Paste; over https it just works.
+Adding the app to a home screen as a PWA needs https too. So TermBridge listens on
+`127.0.0.1` only and lets `tailscale serve` do the TLS — which also means no inbound
+port is open at all.
 
 It stays **inside your tailnet** — Funnel is not used, so nothing is published to
-the internet, and the setting survives reboots. Undo it with
-`tailscale serve --https=443 off`.
+the internet. Undo it with `tailscale serve --https=443 off`.
 
 To keep the server itself running across reboots, register a logon task (no admin
 rights needed):
@@ -187,19 +193,21 @@ flowchart LR
     end
 
     subgraph host["Your Windows PC"]
-        S["TermBridge<br/>Node + Express"]
+        T["tailscale serve<br/>terminates TLS"]
+        S["TermBridge<br/>Node + Express<br/>127.0.0.1 only"]
         PS["PowerShell"]
         CMD["cmd"]
         GB["Git Bash"]
         X["File explorer<br/>Shared memo<br/>Pinned folders"]
 
+        T -->|loopback| S
         S -->|ConPTY| PS
         S -->|ConPTY| CMD
         S -->|ConPTY| GB
         S --> X
     end
 
-    B <-->|"WebSocket, encrypted by WireGuard"| S
+    B <-->|"https + WebSocket, over WireGuard"| T
 ```
 
 Every connected client receives the same output stream and can type into it. The
@@ -214,7 +222,7 @@ Copy `config.json.example` to `config.json`. All keys are optional.
 | Key | Default | Description |
 |---|---|---|
 | `port` | `7070` | Listening port |
-| `host` | auto | Listening address. `"all"` binds every interface (**not recommended**) |
+| `host` | `127.0.0.1` | Listening address. Setting it serves plain http on that address as well — only useful behind your own TLS proxy. `"all"` binds every interface (**not recommended**) |
 | `token` | none | Access token. Setting it makes authentication mandatory |
 
 The environment variables `PORT`, `TERMBRIDGE_HOST`, and `TERMBRIDGE_TOKEN` work too.

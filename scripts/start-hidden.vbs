@@ -1,5 +1,5 @@
-' TermBridge をウィンドウ非表示で起動する（自動起動用）
-' ログは logs\termbridge.log に出力される（server.js 側で書き込み）
+' Start TermBridge with no console window (used by the logon task).
+' Its output goes to logs\termbridge.log, written by server.js.
 Dim sh, fso, root, node
 Set sh = CreateObject("WScript.Shell")
 Set fso = CreateObject("Scripting.FileSystemObject")

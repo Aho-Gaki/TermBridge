@@ -1,4 +1,4 @@
-﻿# TermBridge をログオン時に自動起動するタスクを登録する（管理者権限は不要）
+﻿# Register a logon task so TermBridge starts with Windows. No admin rights needed.
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $vbs = Join-Path $root 'scripts\start-hidden.vbs'
@@ -10,7 +10,7 @@ $settings = New-ScheduledTaskSettingsSet `
     -ExecutionTimeLimit ([TimeSpan]::Zero)
 
 Register-ScheduledTask -TaskName 'TermBridge' -Action $action -Trigger $trigger -Settings $settings -Force | Out-Null
-Write-Host 'タスク "TermBridge" を登録しました。ログオン時に自動起動します。'
+Write-Host 'Registered the scheduled task "TermBridge". It will start at logon.'
 
 Start-ScheduledTask -TaskName 'TermBridge'
-Write-Host '今すぐ起動しました。logs\termbridge.log で状態を確認できます。'
+Write-Host 'Started it now. See logs\termbridge.log for its output.'

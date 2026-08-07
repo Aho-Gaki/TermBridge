@@ -125,7 +125,7 @@ TermBridge は PC でもスマホでも、説明なしで触れる直感的な U
 - Windows 10 または 11
 - [Node.js](https://nodejs.org/) 20 以降
   - もしくは可搬版 Node を `runtime\node\node.exe` に置けば、システムには何もインストールされません
-- [Tailscale](https://tailscale.com/) — 他の端末からアクセスする場合のみ必要
+- [Tailscale](https://tailscale.com/) — 他の端末から使うために必要。なくても動作しますが、その PC 内でのみ使えます
 
 ## インストール
 
@@ -137,32 +137,38 @@ npm install
 
 ## クイックスタート
 
-`start.bat` をダブルクリックします。開くべき URL がコンソールに表示されます。
+`start.bat` をダブルクリックします。待ち受け先と、初回であれば足りていないものが
+表示されます。
 
 ```
 [termbridge] host: MY-PC  shells: powershell, cmd, gitbash  default: powershell
-[termbridge] http://100.x.y.z:7070/
 [termbridge] http://127.0.0.1:7070/
+[termbridge] no https endpoint yet, so only this machine can reach the app.
+[termbridge] run: powershell -ExecutionPolicy Bypass -File scripts\enable-https.ps1
 ```
 
-同じ Tailnet にサインインしている端末で最初の URL を開けば完了です。
-
-続けて HTTPS を有効にしてください。コマンド 1 つで、最初にやっておく価値があります。
+このアドレスは、この PC でだけ使えます。スマホや他のマシンから開くには、案内された
+スクリプトを 1 度だけ実行してください。設定は再起動後も維持されます。
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts\enable-https.ps1
 ```
 
-`tailscale serve` がアプリの前段に入り、以降はコンソールに
-`https://<マシン名>.<tailnet名>.ts.net/` が表示されます。そちらを使ってください。
+`tailscale serve` がアプリの前段に入り、以降は起動時に、他の端末で使うアドレスが
+表示されます。
 
-**理由は貼り付けです。** ブラウザはセキュアコンテキストでしか OS のクリップボードを渡さない
-ため、http のままだと `Ctrl+V` が他所でコピーした内容を読めず、右クリック →「貼り付け」に
-頼ることになります。HTTPS なら普通に動きます。ホーム画面に PWA として追加するのも HTTPS が
-必要です。
+```
+[termbridge] https://my-pc.tailname.ts.net/  <- open this on your other devices
+```
+
+**なぜ Tailnet の IP を直接使わないのか。** ブラウザはセキュアコンテキストでしか OS の
+クリップボードをページに渡さないためです。http のままだと `Ctrl+V` が他所でコピーした内容を
+読めず、右クリック →「貼り付け」に頼ることになります。HTTPS なら普通に動きます。ホーム画面に
+PWA として追加するのも HTTPS が必要です。そのため TermBridge は `127.0.0.1` のみで待ち受け、
+TLS は `tailscale serve` に任せています。**結果として受信ポートを 1 つも開きません。**
 
 これは **Tailnet 内で完結**します。Funnel は使っていないため、インターネットには一切
-公開されません。設定は再起動後も維持されます。解除は `tailscale serve --https=443 off` です。
+公開されません。解除は `tailscale serve --https=443 off` です。
 
 サーバー自体を再起動後も動かし続けるには、ログオン時の自動起動を登録します（管理者権限は不要）。
 
@@ -181,19 +187,21 @@ flowchart LR
     end
 
     subgraph host["Windows PC"]
-        S["TermBridge<br/>Node + Express"]
+        T["tailscale serve<br/>TLS を終端"]
+        S["TermBridge<br/>Node + Express<br/>127.0.0.1 のみ"]
         PS["PowerShell"]
         CMD["cmd"]
         GB["Git Bash"]
         X["ファイルエクスプローラー<br/>共有メモ<br/>ピン留めフォルダ"]
 
+        T -->|ループバック| S
         S -->|ConPTY| PS
         S -->|ConPTY| CMD
         S -->|ConPTY| GB
         S --> X
     end
 
-    B <-->|"WebSocket / WireGuard で暗号化"| S
+    B <-->|"https + WebSocket / WireGuard で暗号化"| T
 ```
 
 接続中の全クライアントが同じ出力を受け取り、どこからでも入力できます。表示サイズは
@@ -208,7 +216,7 @@ flowchart LR
 | キー | 既定値 | 説明 |
 |---|---|---|
 | `port` | `7070` | 待ち受けポート |
-| `host` | 自動 | 待ち受けアドレス。`"all"` で全インターフェース（**非推奨**） |
+| `host` | `127.0.0.1` | 待ち受けアドレス。設定するとそのアドレスで平文 http も配信します。自前の TLS プロキシを前段に置く場合のみ有用です。`"all"` で全インターフェース（**非推奨**） |
 | `token` | なし | アクセストークン。設定すると認証必須になる |
 
 環境変数 `PORT` / `TERMBRIDGE_HOST` / `TERMBRIDGE_TOKEN` でも指定できます。

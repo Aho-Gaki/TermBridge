@@ -16,8 +16,9 @@ Tailscale isn't running, it falls back to loopback only. When you set up
 `tailscale serve`, TLS is terminated by Tailscale and forwarded to `127.0.0.1:7070` —
 still tailnet-only, because **Funnel is not used anywhere in this project**.
 
-Traffic over a tailnet is encrypted by WireGuard even on the plain `http://100.x.y.z:7070/`
-address, so the token is never sent in the clear between your devices.
+The app itself only listens on `127.0.0.1`, so there is no plain-http address to reach
+from another device in the first place — every remote session is https, and the
+WireGuard tunnel encrypts it a second time.
 
 ## Threat model
 
@@ -96,8 +97,9 @@ LAN アドレスでは待ち受けず、インターネットからは到達で�
 Tailscale 側で行われ `127.0.0.1:7070` に中継されるだけで、**本プロジェクトは Funnel を
 一切使用しません**。
 
-Tailnet 内の通信は `http://100.x.y.z:7070/` という平文 URL でも WireGuard により暗号化
-されるため、トークンが端末間で平文のまま流れることはありません。
+アプリ自体は `127.0.0.1` でしか待ち受けないため、他の端末から到達できる平文 http の
+アドレスがそもそも存在しません。リモートからの接続は常に HTTPS で、さらに WireGuard の
+トンネルによって二重に暗号化されます。
 
 ## 脅威モデル
 
