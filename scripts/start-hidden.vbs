@@ -1,10 +1,8 @@
 ' Start TermBridge with no console window (used by the logon task).
 ' Its output goes to logs\termbridge.log, written by server.js.
-Dim sh, fso, root, node
+Dim sh, root, script
 Set sh = CreateObject("WScript.Shell")
-Set fso = CreateObject("Scripting.FileSystemObject")
 root = Left(WScript.ScriptFullName, InStrRev(WScript.ScriptFullName, "\scripts\") - 1)
-node = root & "\runtime\node\node.exe"
-If Not fso.FileExists(node) Then node = "node"
+script = root & "\scripts\start.ps1"
 sh.CurrentDirectory = root
-sh.Run """" & node & """ """ & root & "\server.js""", 0, False
+sh.Run "powershell.exe -NoProfile -ExecutionPolicy Bypass -File """ & script & """", 0, False

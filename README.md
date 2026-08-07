@@ -154,16 +154,13 @@ prints the address to open:
 Open the second address on any device signed into the same tailnet. That's it — the
 serve setting persists, so later runs just use it.
 
+If another app is using port 7070, `start.bat` automatically selects the next free
+port and passes the same value to both TermBridge and `tailscale serve`.
+
 Under the hood this uses `tailscale serve --bg`. If another app already owns HTTPS
 port 443, its route is preserved and TermBridge automatically tries port 8443, then
 10000. In that case, open the URL it prints, such as
 `https://my-pc.tailname.ts.net:8443/`.
-
-To rerun only the HTTPS setup:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts\enable-https.ps1
-```
 
 **Why not just the tailnet IP?** Because a browser only hands the OS clipboard to a
 page in a secure context. Over plain http, `Ctrl+V` cannot read what you copied
@@ -221,7 +218,7 @@ Copy `config.json.example` to `config.json`. All keys are optional.
 
 | Key | Default | Description |
 |---|---|---|
-| `port` | `7070` | Listening port |
+| `port` | `7070` | Preferred listening port; `start.bat` selects the next free port when it is occupied |
 | `host` | `127.0.0.1` | Listening address. Setting it serves plain http on that address as well — only useful behind your own TLS proxy. `"all"` binds every interface (**not recommended**) |
 | `token` | none | Access token. Setting it makes authentication mandatory |
 
@@ -243,10 +240,10 @@ See [SECURITY.md](SECURITY.md) for the threat model and hardening steps.
 
 ## Troubleshooting
 
-**Other devices can't connect.** `tailscale serve` isn't set up, so nothing outside
-this machine can reach the app. Run `scripts\enable-https.ps1`, then use the
-`https://<machine>.<tailnet>.ts.net/` address it prints. No firewall change is
-needed — the app never accepts a connection from the network directly.
+**Other devices can't connect.** Restart `start.bat` and use the
+`https://<machine>.<tailnet>.ts.net/` address it prints. Inspect the active mapping
+with `tailscale serve status`. No firewall change is needed — the app never accepts
+a connection from the network directly.
 
 **`tailscale serve` already forwards to something else.** Existing routes are not
 replaced. TermBridge automatically uses a free HTTPS port (8443 or 10000); open the

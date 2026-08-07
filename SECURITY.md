@@ -8,8 +8,9 @@ files, and start programs. Please read this page before exposing it to anything.
 
 Out of the box, the server binds only to `127.0.0.1`. It does not listen on your LAN
 or Tailscale address and is not reachable from the internet. `start.bat` configures
-`tailscale serve`, which terminates TLS and forwards to `127.0.0.1:7070` — still
-tailnet-only, because **Funnel is not used anywhere in this project**.
+`tailscale serve`, which terminates TLS and forwards to the locally selected port
+(`127.0.0.1:7070` by default) — still tailnet-only, because **Funnel is not used
+anywhere in this project**.
 
 The app itself only listens on `127.0.0.1`, so there is no plain-http address to reach
 from another device in the first place — every remote session is https, and the
@@ -46,9 +47,9 @@ Save this as `config.json` and restart. Every device is then asked for the token
 first access and stores it locally. The token guards both the WebSocket handshake and
 the file explorer API.
 
-**2. Restrict the port with Tailscale ACLs.** A token is a shared secret; an ACL is
-enforcement. Limiting which tailnet devices may reach port 7070 is stronger than
-either alone.
+**2. Restrict the HTTPS port with Tailscale ACLs.** A token is a shared secret; an
+ACL is enforcement. Limit access to the HTTPS port printed at startup (normally 443,
+or 8443/10000 when another Serve route already uses it).
 
 **3. Leave `host` unset.** Setting `"host": "all"` binds every interface, including
 your LAN. There is no good reason to do this, and it turns a private tool into an
@@ -89,8 +90,8 @@ TermBridge は Windows の対話的シェルを HTTP 越しに提供します。
 
 LAN アドレスでは待ち受けず、インターネットからは到達できません。Tailscale が動作して
 いない場合はループバックのみになります。`tailscale serve` を設定した場合も TLS の終端は
-Tailscale 側で行われ `127.0.0.1:7070` に中継されるだけで、**本プロジェクトは Funnel を
-一切使用しません**。
+Tailscale 側で行われ、ローカルで選択されたポート（既定は `127.0.0.1:7070`）に中継される
+だけで、**本プロジェクトは Funnel を一切使用しません**。
 
 アプリ自体は `127.0.0.1` でしか待ち受けないため、他の端末から到達できる平文 http の
 アドレスがそもそも存在しません。リモートからの接続は常に HTTPS で、さらに WireGuard の
@@ -126,8 +127,9 @@ Tailscale 側で行われ `127.0.0.1:7070` に中継されるだけで、**本�
 これを `config.json` として保存し再起動します。以降、各端末は初回アクセス時にトークンを
 求められ、端末ごとに保存します。トークンは WebSocket の接続とファイル API の両方を保護します。
 
-**2. Tailscale の ACL でポートを制限する。** トークンは共有秘密にすぎませんが、ACL は
-強制力のある制御です。ポート 7070 に到達できる端末を絞るほうが確実です。
+**2. Tailscale の ACL で HTTPS ポートを制限する。** トークンは共有秘密にすぎませんが、
+ACL は強制力のある制御です。起動時に表示される HTTPS ポート（通常は443番、競合時は
+8443番または10000番）に到達できる端末を絞るほうが確実です。
 
 **3. `host` は設定しない。** `"host": "all"` は LAN を含む全インターフェースにバインドします。
 これを行う正当な理由はなく、私的なツールを公開シェルに変えてしまいます。

@@ -65,11 +65,14 @@ function Get-UsedServePorts($Config) {
   return @($ports | Select-Object -Unique)
 }
 
-# Match server.js: config.json wins over PORT, then the default is 7070.
+# Match server.js: the startup-selected port wins, followed by config.json,
+# PORT, and finally the default 7070.
 $port = 7070
 $configPath = Join-Path $PSScriptRoot '..\config.json'
 try {
-  if (Test-Path -LiteralPath $configPath) {
+  if ($env:TERMBRIDGE_RUNTIME_PORT) {
+    $port = [int]$env:TERMBRIDGE_RUNTIME_PORT
+  } elseif (Test-Path -LiteralPath $configPath) {
     $cfg = Get-Content -LiteralPath $configPath -Raw | ConvertFrom-Json
     if ($cfg.port) { $port = [int]$cfg.port }
   } elseif ($env:PORT) {

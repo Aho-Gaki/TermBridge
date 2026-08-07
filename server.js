@@ -16,7 +16,7 @@ try {
   cfg = JSON.parse(fs.readFileSync(path.join(__dirname, 'config.json'), 'utf8'));
 } catch {}
 
-const PORT = parseInt(cfg.port || process.env.PORT || '7070', 10);
+const PORT = parseInt(process.env.TERMBRIDGE_RUNTIME_PORT || cfg.port || process.env.PORT || '7070', 10);
 const HOST = cfg.host || process.env.TERMBRIDGE_HOST || ''; // '' = tailscale + loopback, 'all' = 0.0.0.0
 const TOKEN = cfg.token || process.env.TERMBRIDGE_TOKEN || '';
 
