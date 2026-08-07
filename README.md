@@ -141,28 +141,28 @@ npm install
 
 ## Quick start
 
-Double-click `start.bat`. It prints where it is listening — and, the first time,
-what is still missing:
+Double-click `start.bat`. It sets up `tailscale serve` for you on the first run, then
+prints the address to open:
 
 ```
+[https] Ready: https://my-pc.tailname.ts.net/
 [termbridge] host: MY-PC  shells: powershell, cmd, gitbash  default: powershell
 [termbridge] http://127.0.0.1:7070/
-[termbridge] no https endpoint yet, so only this machine can reach the app.
-[termbridge] run: powershell -ExecutionPolicy Bypass -File scripts\enable-https.ps1
+[termbridge] https://my-pc.tailname.ts.net/  <- open this on your other devices
 ```
 
-That address works on this PC. To reach it from your phone or another machine, run
-the script it names — once; the setting survives reboots:
+Open the second address on any device signed into the same tailnet. That's it — the
+serve setting persists, so later runs just use it.
+
+Under the hood this uses `tailscale serve --bg`. If another app already owns HTTPS
+port 443, its route is preserved and TermBridge automatically tries port 8443, then
+10000. In that case, open the URL it prints, such as
+`https://my-pc.tailname.ts.net:8443/`.
+
+To rerun only the HTTPS setup:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts\enable-https.ps1
-```
-
-It puts `tailscale serve` in front of the app. From then on, startup prints the
-address to use everywhere else:
-
-```
-[termbridge] https://my-pc.tailname.ts.net/  <- open this on your other devices
 ```
 
 **Why not just the tailnet IP?** Because a browser only hands the OS clipboard to a
@@ -173,7 +173,7 @@ Adding the app to a home screen as a PWA needs https too. So TermBridge listens 
 port is open at all.
 
 It stays **inside your tailnet** — Funnel is not used, so nothing is published to
-the internet. Undo it with `tailscale serve --https=443 off`.
+the internet. Inspect the active routes with `tailscale serve status`.
 
 To keep the server itself running across reboots, register a logon task (no admin
 rights needed):
@@ -248,13 +248,10 @@ this machine can reach the app. Run `scripts\enable-https.ps1`, then use the
 `https://<machine>.<tailnet>.ts.net/` address it prints. No firewall change is
 needed — the app never accepts a connection from the network directly.
 
-**`enable-https.ps1` says Tailscale was not found.** Either it isn't installed, or it
-lives somewhere other than `C:\Program Files\Tailscale\tailscale.exe` — point
-`TAILSCALE_EXE` at it. If it is installed, make sure it is running and signed in.
-
-**`tailscale serve` already forwards to something else.** It can only front one
-target per path, so the script asks before replacing it. Answering no leaves your
-existing setup alone; TermBridge then stays reachable from this machine only.
+**`tailscale serve` already forwards to something else.** Existing routes are not
+replaced. TermBridge automatically uses a free HTTPS port (8443 or 10000); open the
+port-qualified URL printed at startup. If all three supported HTTPS ports are
+occupied, startup stops rather than replacing an existing route.
 
 **`node` is not recognized.** Install Node.js 20+, or place a portable Node at
 `runtime\node\node.exe`.

@@ -137,28 +137,27 @@ npm install
 
 ## クイックスタート
 
-`start.bat` をダブルクリックします。待ち受け先と、初回であれば足りていないものが
-表示されます。
+`start.bat` をダブルクリックします。初回に `tailscale serve` の設定まで済ませたうえで、
+開くべきアドレスが表示されます。
 
 ```
+[https] Ready: https://my-pc.tailname.ts.net/
 [termbridge] host: MY-PC  shells: powershell, cmd, gitbash  default: powershell
 [termbridge] http://127.0.0.1:7070/
-[termbridge] no https endpoint yet, so only this machine can reach the app.
-[termbridge] run: powershell -ExecutionPolicy Bypass -File scripts\enable-https.ps1
+[termbridge] https://my-pc.tailname.ts.net/  <- open this on your other devices
 ```
 
-このアドレスは、この PC でだけ使えます。スマホや他のマシンから開くには、案内された
-スクリプトを 1 度だけ実行してください。設定は再起動後も維持されます。
+同じ Tailnet にサインインしている端末で 2 つめのアドレスを開けば完了です。serve の設定は
+維持されるので、次回以降はそのまま使われます。
+
+内部では `tailscale serve --bg` を使います。HTTPS の443番が別のアプリですでに使われて
+いる場合も、その設定は上書きせず、8443番、次に10000番を自動選択します。その場合は
+`https://my-pc.tailname.ts.net:8443/` のように、表示されたポート付きURLを開いてください。
+
+HTTPS の設定だけをやり直す場合は、次のスクリプトを実行できます。
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts\enable-https.ps1
-```
-
-`tailscale serve` がアプリの前段に入り、以降は起動時に、他の端末で使うアドレスが
-表示されます。
-
-```
-[termbridge] https://my-pc.tailname.ts.net/  <- open this on your other devices
 ```
 
 **なぜ Tailnet の IP を直接使わないのか。** ブラウザはセキュアコンテキストでしか OS の
@@ -168,7 +167,7 @@ PWA として追加するのも HTTPS が必要です。そのため TermBridge 
 TLS は `tailscale serve` に任せています。**結果として受信ポートを 1 つも開きません。**
 
 これは **Tailnet 内で完結**します。Funnel は使っていないため、インターネットには一切
-公開されません。解除は `tailscale serve --https=443 off` です。
+公開されません。現在の設定は `tailscale serve status` で確認できます。
 
 サーバー自体を再起動後も動かし続けるには、ログオン時の自動起動を登録します（管理者権限は不要）。
 
@@ -242,13 +241,9 @@ Tailscale アドレスにもインターネットにもバインドせず、**�
 `https://<マシン名>.<tailnet名>.ts.net/` を開いてください。**ファイアウォールの設定は
 不要です** — アプリはネットワークからの接続を直接受けません。
 
-**`enable-https.ps1` が Tailscale を見つけられない。** 未インストールか、
-`C:\Program Files\Tailscale\tailscale.exe` 以外の場所にあります。後者なら環境変数
-`TAILSCALE_EXE` にパスを設定してください。インストール済みなら、起動とサインインを確認します。
-
-**`tailscale serve` が既に別のものに向いている。** 同じパスには 1 つしか設定できないため、
-スクリプトが上書き前に確認します。「いいえ」を選べば既存の設定はそのままで、TermBridge は
-このマシンからのみ利用できる状態になります。
+**`tailscale serve` が既に別のものに向いている。** 既存設定は上書きしません。TermBridge は
+空いている HTTPS ポート（8443番または10000番）へ自動設定されるので、起動時に表示される
+ポート付きURLを開いてください。3ポートすべてが使用中の場合は、既存設定を守るため起動を中止します。
 
 **`node` が見つからないと言われる。** Node.js 20 以降を入れるか、可搬版 Node を
 `runtime\node\node.exe` に配置してください。

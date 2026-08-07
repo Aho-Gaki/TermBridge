@@ -6,15 +6,10 @@ files, and start programs. Please read this page before exposing it to anything.
 
 ## Default posture
 
-Out of the box, the server binds to **two addresses only**:
-
-- your Tailscale IPv4 address
-- `127.0.0.1`
-
-It does not listen on your LAN address and is not reachable from the internet. If
-Tailscale isn't running, it falls back to loopback only. When you set up
-`tailscale serve`, TLS is terminated by Tailscale and forwarded to `127.0.0.1:7070` —
-still tailnet-only, because **Funnel is not used anywhere in this project**.
+Out of the box, the server binds only to `127.0.0.1`. It does not listen on your LAN
+or Tailscale address and is not reachable from the internet. `start.bat` configures
+`tailscale serve`, which terminates TLS and forwards to `127.0.0.1:7070` — still
+tailnet-only, because **Funnel is not used anywhere in this project**.
 
 The app itself only listens on `127.0.0.1`, so there is no plain-http address to reach
 from another device in the first place — every remote session is https, and the

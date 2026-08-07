@@ -1,60 +1,126 @@
-# Puts `tailscale serve` in front of TermBridge so it is reached over https.
+# Configure Tailscale Serve for TermBridge.
 #
-# This is not about the padlock. Browsers only expose the OS clipboard in a
-# secure context, so over plain http the paste shortcut cannot read what you
-# copied elsewhere - you are stuck with right-click -> Paste. Over https it
-# works normally, and the app can also be installed as a PWA.
-#
-# Everything stays inside your tailnet. Funnel is not used, so nothing is
-# published to the internet.
+# The default route is HTTPS on port 443. If another app already owns that
+# route, use one of Tailscale Serve's other HTTPS ports instead of replacing it.
+# Funnel is never enabled, so the endpoint remains tailnet-only.
 
 $ErrorActionPreference = 'Stop'
 
-$tailscale = $env:TAILSCALE_EXE
-if (-not $tailscale) { $tailscale = 'C:\Program Files\Tailscale\tailscale.exe' }
-if (-not (Test-Path $tailscale)) {
-  Write-Host "Tailscale was not found at $tailscale" -ForegroundColor Red
-  Write-Host "Install it from https://tailscale.com/ or set TAILSCALE_EXE to its path."
-  exit 1
+$tailscale = if ($env:TAILSCALE_EXE) {
+  $env:TAILSCALE_EXE
+} else {
+  'C:\Program Files\Tailscale\tailscale.exe'
 }
 
-# The port the app actually listens on, in the same order server.js resolves it.
-$port = 7070
-$configPath = Join-Path $PSScriptRoot '..\config.json'
-if (Test-Path $configPath) {
-  $cfg = Get-Content $configPath -Raw | ConvertFrom-Json
-  if ($cfg.port) { $port = $cfg.port }
-} elseif ($env:PORT) {
-  $port = $env:PORT
-}
+function Get-ServeConfig([string]$Executable) {
+  $output = & $Executable serve status --json 2>&1 | Out-String
+  if ($LASTEXITCODE -ne 0) {
+    $detail = $output.Trim()
+    if (-not $detail) { $detail = 'Tailscale is not running or is not signed in.' }
+    throw $detail
+  }
 
-# Serve can only front one target per path. Refuse to silently replace someone
-# else's - that would take down whatever is already behind it.
-$current = & $tailscale serve status 2>&1 | Out-String
-if ($current -match 'proxy\s+http://(?:127\.0\.0\.1|localhost):(\d+)') {
-  $existing = $Matches[1]
-  if ($existing -ne "$port") {
-    Write-Host "tailscale serve already forwards / to port $existing." -ForegroundColor Yellow
-    Write-Host "Pointing it at TermBridge (port $port) would break whatever is on $existing."
-    $answer = Read-Host "Replace it? (y/N)"
-    if ($answer -ne 'y') { Write-Host 'Left unchanged.'; exit 0 }
-  } else {
-    Write-Host "Already serving TermBridge on port $port." -ForegroundColor Green
+  if (-not $output.Trim()) { return [pscustomobject]@{} }
+  try {
+    return $output | ConvertFrom-Json
+  } catch {
+    throw 'Could not read the Tailscale Serve configuration. Please update Tailscale.'
   }
 }
 
-& $tailscale serve --bg --https=443 "http://127.0.0.1:$port"
-if ($LASTEXITCODE -ne 0) { Write-Host 'tailscale serve failed.' -ForegroundColor Red; exit 1 }
+function Get-RootRoutes($Config) {
+  $routes = @()
+  if (-not $Config.Web) { return $routes }
 
-$status = & $tailscale serve status 2>&1 | Out-String
-$url = ([regex]::Match($status, '(?m)^https://\S+')).Value
-Write-Host ''
-if ($url) {
-  Write-Host "TermBridge is now at $url" -ForegroundColor Green
-  Write-Host 'Open that on any device signed into the same tailnet. Paste works there,'
-  Write-Host 'and it can be added to the home screen as a PWA.'
-} else {
-  Write-Host 'serve reported no https endpoint. Check: tailscale serve status'
+  foreach ($site in $Config.Web.PSObject.Properties) {
+    $handlers = $site.Value.Handlers
+    if (-not $handlers) { continue }
+    $root = $handlers.PSObject.Properties['/']
+    if (-not $root -or -not $root.Value.Proxy) { continue }
+
+    $httpsPort = 443
+    if ($site.Name -match ':(\d+)$') { $httpsPort = [int]$Matches[1] }
+    $routes += [pscustomobject]@{
+      Authority = $site.Name
+      HttpsPort = $httpsPort
+      Proxy     = [string]$root.Value.Proxy
+    }
+  }
+  return $routes
 }
-Write-Host ''
-Write-Host 'To undo: tailscale serve --https=443 off'
+
+function Get-UsedServePorts($Config) {
+  $ports = @()
+  if ($Config.TCP) {
+    foreach ($listener in $Config.TCP.PSObject.Properties) {
+      $parsed = 0
+      if ([int]::TryParse($listener.Name, [ref]$parsed)) { $ports += $parsed }
+    }
+  }
+  if ($Config.Web) {
+    foreach ($site in $Config.Web.PSObject.Properties) {
+      if ($site.Name -match ':(\d+)$') { $ports += [int]$Matches[1] }
+    }
+  }
+  return @($ports | Select-Object -Unique)
+}
+
+# Match server.js: config.json wins over PORT, then the default is 7070.
+$port = 7070
+$configPath = Join-Path $PSScriptRoot '..\config.json'
+try {
+  if (Test-Path -LiteralPath $configPath) {
+    $cfg = Get-Content -LiteralPath $configPath -Raw | ConvertFrom-Json
+    if ($cfg.port) { $port = [int]$cfg.port }
+  } elseif ($env:PORT) {
+    $port = [int]$env:PORT
+  }
+  if ($port -lt 1 -or $port -gt 65535) { throw 'port is outside the range 1-65535' }
+} catch {
+  throw "Invalid port setting: $($_.Exception.Message)"
+}
+
+$config = Get-ServeConfig $tailscale
+$target = "http://127.0.0.1:$port"
+$targetPattern = '^http://(?:127\.0\.0\.1|localhost):' + [regex]::Escape("$port") + '/?$'
+$routes = @(Get-RootRoutes $config)
+$usedPorts = @(Get-UsedServePorts $config)
+
+# A previous start may already have placed TermBridge on 443, 8443, or 10000.
+$existing = $routes | Where-Object { $_.Proxy -match $targetPattern } | Select-Object -First 1
+if ($existing) {
+  Write-Host "[https] Ready: https://$($existing.Authority)/" -ForegroundColor Green
+  return
+}
+
+# Tailscale Serve supports HTTPS on these ports. Prefer the normal URL, but do
+# not destroy an unrelated Serve route merely because TermBridge starts.
+$servePort = $null
+foreach ($candidate in @(443, 8443, 10000)) {
+  if ($candidate -notin $usedPorts) {
+    $servePort = $candidate
+    break
+  }
+}
+
+if (-not $servePort) {
+  throw 'Ports 443, 8443, and 10000 already have Tailscale Serve routes.'
+}
+
+$arguments = @('serve', '--bg')
+if ($servePort -ne 443) { $arguments += "--https=$servePort" }
+$arguments += $target
+
+& $tailscale @arguments
+if ($LASTEXITCODE -ne 0) {
+  throw 'tailscale serve --bg failed.'
+}
+
+$updated = Get-ServeConfig $tailscale
+$route = @(Get-RootRoutes $updated) |
+  Where-Object { $_.Proxy -match $targetPattern } |
+  Select-Object -First 1
+if (-not $route) {
+  throw 'Serve was updated, but its HTTPS route could not be verified.'
+}
+Write-Host "[https] Ready: https://$($route.Authority)/" -ForegroundColor Green

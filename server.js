@@ -1065,12 +1065,22 @@ const TS_IP = tailscaleIp();
 let SERVE_URL = null; // filled in at startup, shown in the client's status bar
 
 function tailscaleHttpsUrl(cb) {
-  const exe = process.env.TAILSCALE_EXE || 'C:\\Program Files\\Tailscale\\tailscale.exe';
-  execFile(exe, ['serve', 'status'], { windowsHide: true, timeout: 4000 }, (err, out) => {
+  const installedExe = 'C:\\Program Files\\Tailscale\\tailscale.exe';
+  const exe = process.env.TAILSCALE_EXE || (fs.existsSync(installedExe) ? installedExe : 'tailscale.exe');
+  execFile(exe, ['serve', 'status', '--json'], { windowsHide: true, timeout: 4000 }, (err, out) => {
     if (err || !out) return cb(null);
-    const url = (out.match(/^https:\/\/\S+/m) || [])[0];
-    const here = new RegExp(`http://(127\\.0\\.0\\.1|localhost):${PORT}\\b`).test(out);
-    cb(url && here ? url : null);
+    try {
+      const config = JSON.parse(out);
+      const target = new RegExp(`^http://(127\\.0\\.0\\.1|localhost):${PORT}/?$`);
+      for (const [authority, site] of Object.entries(config.Web || {})) {
+        const proxy = site?.Handlers?.['/']?.Proxy;
+        if (typeof proxy === 'string' && target.test(proxy)) {
+          cb(`https://${authority}/`);
+          return;
+        }
+      }
+    } catch {}
+    cb(null);
   });
 }
 
