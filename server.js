@@ -439,6 +439,9 @@ wss.on('connection', (ws) => {
       send(ws, {
         type: 'init',
         hostname: os.hostname(),
+        // The address other devices actually use. Since the app only listens on
+        // loopback, the tailnet IP is no longer somewhere you can open it.
+        serveUrl: SERVE_URL,
         tsIp: TS_IP,
         shells: [...SHELLS.values()].map((s) => ({ key: s.key, label: s.label })),
         defaultShell: DEFAULT_SHELL,
@@ -1059,6 +1062,8 @@ const TS_IP = tailscaleIp();
 // more than the padlock: browsers only hand over the OS clipboard in a secure
 // context, so pasting into the terminal works over https and not over http.
 // Report the URL if serve is already pointing at this port.
+let SERVE_URL = null; // filled in at startup, shown in the client's status bar
+
 function tailscaleHttpsUrl(cb) {
   const exe = process.env.TAILSCALE_EXE || 'C:\\Program Files\\Tailscale\\tailscale.exe';
   execFile(exe, ['serve', 'status'], { windowsHide: true, timeout: 4000 }, (err, out) => {
@@ -1069,14 +1074,18 @@ function tailscaleHttpsUrl(cb) {
   });
 }
 
+// Nothing is served on a network interface by default. Other devices reach the
+// app through `tailscale serve`, which terminates TLS and connects here over
+// loopback - so the page is always https, which is what lets the browser hand
+// over the OS clipboard. Binding the tailnet address directly would serve the
+// same app over plain http, where pasting is broken and the traffic is
+// unencrypted inside the tailnet.
+//
+// `host` is still honoured for anyone fronting this with their own TLS proxy.
 let bindHosts;
 if (HOST === 'all') bindHosts = ['0.0.0.0'];
 else if (HOST) bindHosts = [HOST];
-else bindHosts = [...new Set([TS_IP, '127.0.0.1'].filter(Boolean))];
-
-if (!TS_IP && !HOST) {
-  console.warn('[termbridge] no Tailscale IPv4 address found; listening on 127.0.0.1 only.');
-}
+else bindHosts = ['127.0.0.1'];
 
 for (const host of bindHosts) {
   const server = http.createServer(app);
@@ -1099,6 +1108,11 @@ console.log(`[termbridge] host: ${os.hostname()}  shells: ${[...SHELLS.keys()].j
 if (TOKEN) console.log('[termbridge] token auth: enabled');
 
 tailscaleHttpsUrl((url) => {
-  if (url) console.log(`[termbridge] ${url} (https — paste works here)`);
-  else if (TS_IP) console.log('[termbridge] no https yet: run scripts\\enable-https.ps1 to make paste work');
+  SERVE_URL = url;
+  if (url) {
+    console.log(`[termbridge] ${url}  <- open this on your other devices`);
+  } else if (!HOST) {
+    console.warn('[termbridge] no https endpoint yet, so only this machine can reach the app.');
+    console.warn('[termbridge] run: powershell -ExecutionPolicy Bypass -File scripts\\enable-https.ps1');
+  }
 });

@@ -225,20 +225,28 @@ The environment variables `PORT`, `TERMBRIDGE_HOST`, and `TERMBRIDGE_TOKEN` work
 > **Anyone who can open this page gets full control of your shell.** Treat it with
 > the same care as an unlocked SSH session.
 
-By default TermBridge binds only to your Tailscale address and `127.0.0.1`. It is not
-reachable from your LAN or the internet, only from devices signed into your tailnet.
-If other people's devices are on that tailnet, turn on token authentication.
+TermBridge listens on `127.0.0.1` and nothing else. It is not bound to your LAN, your
+Tailscale address, or the internet — no inbound port is open at all. Other devices
+reach it through `tailscale serve`, which terminates TLS and connects over loopback,
+so the traffic is encrypted and the page is always https. If other people's devices
+are on your tailnet, turn on token authentication as well.
 
 See [SECURITY.md](SECURITY.md) for the threat model and hardening steps.
 
 ## Troubleshooting
 
-**Other devices can't connect.** Windows Firewall is blocking inbound traffic.
-Right-click `allow-firewall.bat` and choose *Run as administrator* — it allows port
-7070 from the Tailscale range (100.64.0.0/10) only.
+**Other devices can't connect.** `tailscale serve` isn't set up, so nothing outside
+this machine can reach the app. Run `scripts\enable-https.ps1`, then use the
+`https://<machine>.<tailnet>.ts.net/` address it prints. No firewall change is
+needed — the app never accepts a connection from the network directly.
 
-**"Tailscale IPv4 address not found."** Tailscale isn't running or isn't signed in.
-The server falls back to `127.0.0.1` only.
+**`enable-https.ps1` says Tailscale was not found.** Either it isn't installed, or it
+lives somewhere other than `C:\Program Files\Tailscale\tailscale.exe` — point
+`TAILSCALE_EXE` at it. If it is installed, make sure it is running and signed in.
+
+**`tailscale serve` already forwards to something else.** It can only front one
+target per path, so the script asks before replacing it. Answering no leaves your
+existing setup alone; TermBridge then stays reachable from this machine only.
 
 **`node` is not recognized.** Install Node.js 20+, or place a portable Node at
 `runtime\node\node.exe`.

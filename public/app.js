@@ -1207,7 +1207,11 @@
         applyMemo(msg.memo || '');
         document.title = `${hostname} — TermBridge`;
         setConn('ok', { text: hostname });
-        el.connState.textContent = msg.tsIp ? `${msg.tsIp}:${location.port || 80}` : '';
+        // Prefer the address other devices can actually open. The tailnet IP is
+        // only reachable when someone has bound it explicitly via `host`.
+        el.connState.textContent = msg.serveUrl
+          ? msg.serveUrl.replace(/^https:\/\//, '')
+          : (msg.tsIp ? `${msg.tsIp}:${location.port || 80}` : '');
         renderEmptyButtons();
         renderPresence(msg.clients);
 

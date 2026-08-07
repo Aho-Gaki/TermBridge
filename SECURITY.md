@@ -26,7 +26,7 @@ address, so the token is never sent in the clear between your devices.
 | Threat | How |
 |---|---|
 | Reachable from the internet | Never binds to a public interface; no Funnel |
-| Reachable from your LAN / coffee shop Wi-Fi | Not bound to LAN addresses; the firewall helper allows only `100.64.0.0/10` |
+| Reachable from your LAN / coffee shop Wi-Fi | Binds `127.0.0.1` only; no inbound port is opened at all |
 | Token guessing by brute force timing | Compared with `crypto.timingSafeEqual` after a length check |
 
 **Not protected against**
@@ -58,9 +58,8 @@ either alone.
 your LAN. There is no good reason to do this, and it turns a private tool into an
 open remote shell.
 
-**4. Run `allow-firewall.bat` as administrator** rather than clicking "Allow" on the
-Windows Firewall prompt. The script scopes the rule to the Tailscale address range
-instead of allowing everything.
+**4. Do not open a firewall port.** The default setup never needs one — `tailscale serve`
+reaches the app over loopback. If Windows Firewall prompts you, you can decline it.
 
 ## What is not a vulnerability
 
@@ -107,7 +106,7 @@ Tailnet 内の通信は `http://100.x.y.z:7070/` という平文 URL でも Wire
 | 脅威 | 対策 |
 |---|---|
 | インターネットからの到達 | 公開インターフェースにバインドしない。Funnel 不使用 |
-| LAN や公衆 Wi-Fi からの到達 | LAN アドレスで待ち受けない。ファイアウォール補助スクリプトは `100.64.0.0/10` のみ許可 |
+| LAN や公衆 Wi-Fi からの到達 | `127.0.0.1` のみで待ち受け、受信ポートを一切開かない |
 | タイミング攻撃によるトークン推測 | 長さ検査の後 `crypto.timingSafeEqual` で比較 |
 
 **防げないもの**
@@ -136,9 +135,9 @@ Tailnet 内の通信は `http://100.x.y.z:7070/` という平文 URL でも Wire
 **3. `host` は設定しない。** `"host": "all"` は LAN を含む全インターフェースにバインドします。
 これを行う正当な理由はなく、私的なツールを公開シェルに変えてしまいます。
 
-**4. `allow-firewall.bat` を管理者として実行する。** Windows ファイアウォールのダイアログで
-「許可」を押すのではなく、このスクリプトを使ってください。ルールを Tailscale の
-アドレス帯に限定します。
+**4. ファイアウォールのポートを開けない。** 既定の構成では不要です。`tailscale serve` が
+ループバック経由で本体に繋ぐためです。Windows ファイアウォールのダイアログが出ても、
+そのまま閉じて構いません。
 
 ## 脆弱性ではないもの
 
