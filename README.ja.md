@@ -147,26 +147,30 @@ npm install
 
 同じ Tailnet にサインインしている端末で最初の URL を開けば完了です。
 
-再起動をまたいで動かし続けるには、ログオン時の自動起動を登録します（管理者権限は不要）。
+続けて HTTPS を有効にしてください。コマンド 1 つで、最初にやっておく価値があります。
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\enable-https.ps1
+```
+
+`tailscale serve` がアプリの前段に入り、以降はコンソールに
+`https://<マシン名>.<tailnet名>.ts.net/` が表示されます。そちらを使ってください。
+
+**理由は貼り付けです。** ブラウザはセキュアコンテキストでしか OS のクリップボードを渡さない
+ため、http のままだと `Ctrl+V` が他所でコピーした内容を読めず、右クリック →「貼り付け」に
+頼ることになります。HTTPS なら普通に動きます。ホーム画面に PWA として追加するのも HTTPS が
+必要です。
+
+これは **Tailnet 内で完結**します。Funnel は使っていないため、インターネットには一切
+公開されません。設定は再起動後も維持されます。解除は `tailscale serve --https=443 off` です。
+
+サーバー自体を再起動後も動かし続けるには、ログオン時の自動起動を登録します（管理者権限は不要）。
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts\install-startup.ps1
 ```
 
 解除は `scripts\uninstall-startup.ps1` を実行してください。ログは `logs\termbridge.log` に出ます。
-
-### HTTPS と PWA インストール
-
-`tailscale serve` が TLS を終端してローカルポートに中継するため、正式な証明書とホスト名が
-使えるようになります。
-
-```powershell
-& "C:\Program Files\Tailscale\tailscale.exe" serve --bg --https=443 http://127.0.0.1:7070
-```
-
-以降は `https://<マシン名>.<tailnet名>.ts.net/` で開け、PWA としてインストールできます。
-これは **Tailnet 内で完結**します。Funnel は使っていないため、インターネットには一切
-公開されません。設定は再起動後も維持されます。
 
 ## 仕組み
 

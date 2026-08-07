@@ -1055,6 +1055,20 @@ function tailscaleIp() {
 
 const TS_IP = tailscaleIp();
 
+// `tailscale serve` puts a real certificate in front of the app. That matters for
+// more than the padlock: browsers only hand over the OS clipboard in a secure
+// context, so pasting into the terminal works over https and not over http.
+// Report the URL if serve is already pointing at this port.
+function tailscaleHttpsUrl(cb) {
+  const exe = process.env.TAILSCALE_EXE || 'C:\\Program Files\\Tailscale\\tailscale.exe';
+  execFile(exe, ['serve', 'status'], { windowsHide: true, timeout: 4000 }, (err, out) => {
+    if (err || !out) return cb(null);
+    const url = (out.match(/^https:\/\/\S+/m) || [])[0];
+    const here = new RegExp(`http://(127\\.0\\.0\\.1|localhost):${PORT}\\b`).test(out);
+    cb(url && here ? url : null);
+  });
+}
+
 let bindHosts;
 if (HOST === 'all') bindHosts = ['0.0.0.0'];
 else if (HOST) bindHosts = [HOST];
@@ -1083,3 +1097,8 @@ for (const host of bindHosts) {
 
 console.log(`[termbridge] host: ${os.hostname()}  shells: ${[...SHELLS.keys()].join(', ')}  default: ${DEFAULT_SHELL}`);
 if (TOKEN) console.log('[termbridge] token auth: enabled');
+
+tailscaleHttpsUrl((url) => {
+  if (url) console.log(`[termbridge] ${url} (https — paste works here)`);
+  else if (TS_IP) console.log('[termbridge] no https yet: run scripts\\enable-https.ps1 to make paste work');
+});

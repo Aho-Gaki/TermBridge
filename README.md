@@ -151,26 +151,32 @@ Double-click `start.bat`. The console prints the URLs to open:
 
 Open the first URL on any device signed into the same tailnet. That's it.
 
-To keep it running across reboots, register a logon task (no admin rights needed):
+Then turn on https — it is one command and it is worth doing straight away:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\enable-https.ps1
+```
+
+This puts `tailscale serve` in front of the app, and from then on the console
+prints an `https://<machine>.<tailnet>.ts.net/` address. Use that one.
+
+**Paste is the reason.** Browsers only hand over the OS clipboard in a secure
+context, so over plain http `Ctrl+V` cannot read what you copied somewhere else and
+you are left with right-click → Paste. Over https it just works. Installing it to
+the home screen as a PWA also requires https.
+
+It stays **inside your tailnet** — Funnel is not used, so nothing is published to
+the internet, and the setting survives reboots. Undo it with
+`tailscale serve --https=443 off`.
+
+To keep the server itself running across reboots, register a logon task (no admin
+rights needed):
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts\install-startup.ps1
 ```
 
 Remove it with `scripts\uninstall-startup.ps1`. Logs are written to `logs\termbridge.log`.
-
-### HTTPS and PWA install
-
-`tailscale serve` terminates TLS and forwards to the local port, giving you a real
-certificate and a hostname:
-
-```powershell
-& "C:\Program Files\Tailscale\tailscale.exe" serve --bg --https=443 http://127.0.0.1:7070
-```
-
-You can then open `https://<machine>.<tailnet>.ts.net/` and install it as a PWA. This
-stays **inside your tailnet** — Funnel is not used, so nothing is exposed to the
-internet. The setting persists across reboots.
 
 ## How it fits together
 
