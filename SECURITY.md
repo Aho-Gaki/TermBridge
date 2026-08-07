@@ -49,7 +49,7 @@ the file explorer API.
 
 **2. Restrict the HTTPS port with Tailscale ACLs.** A token is a shared secret; an
 ACL is enforcement. Limit access to the HTTPS port printed at startup (normally 443,
-or 8443/10000 when another Serve route already uses it).
+8443 as the fallback, or the custom `httpsPort` configured by the user).
 
 **3. Leave `host` unset.** Setting `"host": "all"` binds every interface, including
 your LAN. There is no good reason to do this, and it turns a private tool into an
@@ -128,8 +128,8 @@ Tailscale 側で行われ、ローカルで選択されたポート（既定は 
 求められ、端末ごとに保存します。トークンは WebSocket の接続とファイル API の両方を保護します。
 
 **2. Tailscale の ACL で HTTPS ポートを制限する。** トークンは共有秘密にすぎませんが、
-ACL は強制力のある制御です。起動時に表示される HTTPS ポート（通常は443番、競合時は
-8443番または10000番）に到達できる端末を絞るほうが確実です。
+ACL は強制力のある制御です。起動時に表示される HTTPS ポート（通常は443番、代替は
+8443番、または利用者が設定した `httpsPort`）に到達できる端末を絞るほうが確実です。
 
 **3. `host` は設定しない。** `"host": "all"` は LAN を含む全インターフェースにバインドします。
 これを行う正当な理由はなく、私的なツールを公開シェルに変えてしまいます。
