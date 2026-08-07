@@ -78,6 +78,8 @@
 
       // explorer context menu
       'menu.open': '開く',
+      'menu.openPowerShell': 'PowerShell をここで開く',
+      'menu.openCmd': 'コマンド プロンプトをここで開く',
       'menu.runTerm': 'ターミナルで実行',
       'menu.openLink': '開く（リンク先を実行）',
       'menu.copy': 'コピー',
@@ -107,6 +109,7 @@
       'msg.ranInTab': 'ターミナルのタブで起動しました',
       'msg.openUnsupported': 'このファイル形式のオープンには対応していません',
       'msg.noTerm': 'ターミナルがありません',
+      'msg.folderUnavailable': 'フォルダーが見つからないため、ターミナルを起動できませんでした',
 
       // clipboard
       'clip.empty': 'クリップボードが空です',
@@ -219,6 +222,8 @@
       'type.file': 'File',
 
       'menu.open': 'Open',
+      'menu.openPowerShell': 'Open in PowerShell',
+      'menu.openCmd': 'Open in Command Prompt',
       'menu.runTerm': 'Run in terminal',
       'menu.openLink': 'Open (run target)',
       'menu.copy': 'Copy',
@@ -247,6 +252,7 @@
       'msg.ranInTab': 'Started in a terminal tab',
       'msg.openUnsupported': 'This file type cannot be opened here',
       'msg.noTerm': 'No terminal available',
+      'msg.folderUnavailable': 'The terminal could not start because the folder is unavailable',
 
       'clip.empty': 'Clipboard is empty',
       'clip.http': 'Over plain http the browser will not hand over the OS clipboard. Use right-click → Paste for now, or restart TermBridge with start.bat for HTTPS.',

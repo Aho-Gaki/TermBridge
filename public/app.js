@@ -780,9 +780,37 @@
 
   // ---------------------------------------------------------------- actions
 
-  function createTerm(shellKey) {
+  function createTerm(shellKey, cwd) {
     pendingCreates++;
-    send({ type: 'create', shell: shellKey || defaultShell });
+    const msg = { type: 'create', shell: shellKey || defaultShell };
+    if (cwd) msg.cwd = cwd;
+    send(msg);
+  }
+
+  function openFolderShell(shellKey, cwd) {
+    createTerm(shellKey, cwd);
+    if (mqMobile.matches) setExOpen(false);
+  }
+
+  function folderShellItems(cwd) {
+    const items = [];
+    const powerShell = shells.find((s) => s.key === 'pwsh') || shells.find((s) => s.key === 'powershell');
+    const commandPrompt = shells.find((s) => s.key === 'cmd');
+    if (powerShell) {
+      items.push({
+        icon: shellIcon(powerShell.key),
+        label: i18n.t('menu.openPowerShell'),
+        action: () => openFolderShell(powerShell.key, cwd),
+      });
+    }
+    if (commandPrompt) {
+      items.push({
+        icon: shellIcon(commandPrompt.key),
+        label: i18n.t('menu.openCmd'),
+        action: () => openFolderShell(commandPrompt.key, cwd),
+      });
+    }
+    return items;
   }
 
   el.btnNew.addEventListener('click', () => createTerm(defaultShell));
@@ -1235,6 +1263,10 @@
         refreshUi();
         break;
       }
+      case 'create-error':
+        if (pendingCreates > 0) pendingCreates--;
+        showToast(escapeHtml(i18n.t(msg.error || 'msg.folderUnavailable')));
+        break;
       case 'output': {
         const t = terms.get(msg.id);
         if (t) {
@@ -1838,7 +1870,10 @@
   function exContextMenu(e, x, y) {
     const items = [];
     const full = exJoin(exCur, e.name);
-    if (e.dir) items.push({ icon: e.drive ? exIcons.drive : exIcons.folder, label: i18n.t('menu.open'), action: () => exOpen(e) });
+    if (e.dir) {
+      items.push({ icon: e.drive ? exIcons.drive : exIcons.folder, label: i18n.t('menu.open'), action: () => exOpen(e) });
+      items.push(...folderShellItems(full));
+    }
     else if (isRunnable(e.name)) items.push({ icon: exIcons.bat, label: i18n.t('menu.runTerm'), action: () => exOpen(e) });
     else if (isLnk(e.name)) items.push({ icon: exIcons.lnk, label: i18n.t('menu.openLink'), action: () => exOpen(e) });
     if (!e.drive) {
@@ -1907,11 +1942,15 @@
   }
 
   function pinMenu(pin, x, y) {
-    showMenuItems([
+    const items = [
       { label: i18n.t('menu.open'), action: () => openPin(pin) },
+    ];
+    if (pin.dir) items.push(...folderShellItems(pin.path));
+    items.push(
       { label: i18n.t('menu.unpin'), action: () => exUnpin(pin.path) },
       { label: i18n.t('menu.copyPath'), action: () => { copyText('"' + pin.path + '"'); exShowMsg(i18n.t('msg.pathCopied')); } },
-    ], { x, y });
+    );
+    showMenuItems(items, { x, y });
   }
 
   function renderPins() {
@@ -1942,6 +1981,7 @@
   function exEmptyMenu(x, y) {
     const items = [];
     if (exCur) {
+      items.push(...folderShellItems(exCur));
       items.push({ label: i18n.t('menu.newFolder'), action: () => exCreate('dir') });
       items.push({ label: i18n.t('menu.newFile'), action: () => exCreate('file') });
       if (exClip) items.push({ label: i18n.t('menu.paste'), action: () => exPaste() });

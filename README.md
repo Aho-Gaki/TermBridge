@@ -71,6 +71,7 @@ running.
 - **Show hidden items** with a toggle
 - **Create** new folders and files; **rename**; **delete to the Recycle Bin** rather than permanently
 - **Copy, cut, and paste**, including pasting straight into a folder you right-clicked
+- **Open Command Prompt or PowerShell in any folder** from its right-click menu on PC or long-press menu on mobile
 - **Copy path** to the clipboard, already quoted for pasting into a shell
 - **Run `.bat` and `.cmd` files** — double-click (or tap) and it opens as a terminal tab
 - **Create shortcuts** — right-click any file or folder to drop a `.lnk` beside it, without touching the PC

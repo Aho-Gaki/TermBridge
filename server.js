@@ -101,7 +101,7 @@ let clientSeq = 0;
 
 class Term {
   /** launch (optional): { file, args, cwd, name, shell, unroll, cleanupFile } — e.g. run a .bat in cmd */
-  constructor(shellKey, launch) {
+  constructor(shellKey, launch, startCwd) {
     this.id = 't' + ++termSeq;
     let file, args, cwd;
     if (launch) {
@@ -121,7 +121,7 @@ class Term {
       this.custom = false; // true once a user renames the tab
       file = shell.path;
       args = shell.args;
-      cwd = os.homedir();
+      cwd = startCwd || os.homedir();
     }
     this.cols = 80;
     this.rows = 24;
@@ -459,7 +459,18 @@ wss.on('connection', (ws) => {
     switch (msg.type) {
       case 'create': {
         if (terminals.size >= 24) return;
-        const term = new Term(typeof msg.shell === 'string' ? msg.shell : DEFAULT_SHELL);
+        let startCwd = null;
+        if (msg.cwd !== undefined) {
+          try {
+            if (typeof msg.cwd !== 'string' || !path.isAbsolute(msg.cwd)) throw new Error('invalid path');
+            startCwd = path.normalize(msg.cwd);
+            if (!fs.statSync(startCwd).isDirectory()) throw new Error('not a directory');
+          } catch {
+            send(ws, { type: 'create-error', error: 'msg.folderUnavailable' });
+            return;
+          }
+        }
+        const term = new Term(typeof msg.shell === 'string' ? msg.shell : DEFAULT_SHELL, null, startCwd);
         terminals.set(term.id, term);
         broadcast({ type: 'created', term: term.summary(false), by: client.id });
         break;
