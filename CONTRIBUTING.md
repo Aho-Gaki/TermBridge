@@ -40,7 +40,7 @@ If you are unsure, open an issue before writing code.
 git clone https://github.com/IamaVibeCoder/TermBridge.git
 cd TermBridge
 npm install
-node server.js
+npm run start:local
 ```
 
 Then open `http://127.0.0.1:7070/`. There is nothing to build or watch — reload the
@@ -107,7 +107,7 @@ TermBridge は「Windows PC のターミナルにスマホから触る」とい�
 git clone https://github.com/IamaVibeCoder/TermBridge.git
 cd TermBridge
 npm install
-node server.js
+npm run start:local
 ```
 
 `http://127.0.0.1:7070/` を開きます。ビルドも watch もありません。`public/` を編集したら

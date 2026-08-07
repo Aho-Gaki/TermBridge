@@ -110,7 +110,7 @@
 
       // clipboard
       'clip.empty': 'クリップボードが空です',
-      'clip.http': 'この URL（http）ではブラウザが OS クリップボードを渡しません。いまは右クリック → 「貼り付け」をお使いください。HTTPS で開けば普通に貼り付けられます（scripts\\enable-https.ps1）',
+      'clip.http': 'この URL（http）ではブラウザが OS クリップボードを渡しません。いまは右クリック → 「貼り付け」をお使いください。HTTPS で開くには start.bat から起動してください。',
       'clip.blocked': 'クリップボードの読み取りがブロックされています（アドレスバーの 🔒 → クリップボード → 許可 → 再読み込み）',
       'clip.browser': 'ブラウザ',
 
@@ -249,7 +249,7 @@
       'msg.noTerm': 'No terminal available',
 
       'clip.empty': 'Clipboard is empty',
-      'clip.http': 'Over plain http the browser will not hand over the OS clipboard. Use right-click → Paste for now; serving over https makes it work normally (scripts\\enable-https.ps1).',
+      'clip.http': 'Over plain http the browser will not hand over the OS clipboard. Use right-click → Paste for now, or restart TermBridge with start.bat for HTTPS.',
       'clip.blocked': 'Clipboard read is blocked (address bar 🔒 → Clipboard → Allow → reload)',
       'clip.browser': 'browser',
 

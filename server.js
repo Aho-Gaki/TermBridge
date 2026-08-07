@@ -439,10 +439,7 @@ wss.on('connection', (ws) => {
       send(ws, {
         type: 'init',
         hostname: os.hostname(),
-        // The address other devices actually use. Since the app only listens on
-        // loopback, the tailnet IP is no longer somewhere you can open it.
         serveUrl: SERVE_URL,
-        tsIp: TS_IP,
         shells: [...SHELLS.values()].map((s) => ({ key: s.key, label: s.label })),
         defaultShell: DEFAULT_SHELL,
         terminals: [...terminals.values()].map((t) => t.summary(true)),
@@ -1045,19 +1042,6 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // ---------------------------------------------------------------- listen
 
-function tailscaleIp() {
-  for (const addrs of Object.values(os.networkInterfaces())) {
-    for (const a of addrs || []) {
-      if (a.family !== 'IPv4' || a.internal) continue;
-      const [o1, o2] = a.address.split('.').map(Number);
-      if (o1 === 100 && o2 >= 64 && o2 <= 127) return a.address;
-    }
-  }
-  return null;
-}
-
-const TS_IP = tailscaleIp();
-
 // `tailscale serve` puts a real certificate in front of the app. That matters for
 // more than the padlock: browsers only hand over the OS clipboard in a secure
 // context, so pasting into the terminal works over https and not over http.
@@ -1108,6 +1092,7 @@ for (const host of bindHosts) {
   });
   server.on('error', (err) => {
     console.error(`[termbridge] cannot listen on ${host}:${PORT}: ${err.message}`);
+    process.exitCode = 1;
   });
   server.listen(PORT, host, () => {
     console.log(`[termbridge] http://${host}:${PORT}/`);
@@ -1123,6 +1108,6 @@ tailscaleHttpsUrl((url) => {
     console.log(`[termbridge] ${url}  <- open this on your other devices`);
   } else if (!HOST) {
     console.warn('[termbridge] no https endpoint yet, so only this machine can reach the app.');
-    console.warn('[termbridge] run: powershell -ExecutionPolicy Bypass -File scripts\\enable-https.ps1');
+    console.warn('[termbridge] close this process and start TermBridge with start.bat.');
   }
 });

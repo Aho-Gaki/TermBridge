@@ -4,8 +4,33 @@
 $ErrorActionPreference = 'Stop'
 
 $root = Split-Path -Parent $PSScriptRoot
+$serverPath = Join-Path $root 'server.js'
+$logDir = Join-Path $root 'logs'
+$pidPath = Join-Path $logDir 'termbridge.pid'
 $preferredPort = 7070
 $configPath = Join-Path $root 'config.json'
+
+function Get-RecordedServer {
+  if (-not (Test-Path -LiteralPath $pidPath)) { return $null }
+
+  $recordedPid = 0
+  $rawPid = Get-Content -LiteralPath $pidPath -Raw -ErrorAction SilentlyContinue
+  if (-not $rawPid) { return $null }
+  $rawPid = $rawPid.Trim()
+  if (-not [int]::TryParse($rawPid, [ref]$recordedPid)) { return $null }
+
+  $process = Get-CimInstance Win32_Process -Filter "ProcessId=$recordedPid" -ErrorAction SilentlyContinue
+  if (-not $process -or -not $process.CommandLine) { return $null }
+  if ($process.CommandLine.IndexOf($serverPath, [StringComparison]::OrdinalIgnoreCase) -lt 0) { return $null }
+  return $process
+}
+
+$running = Get-RecordedServer
+if ($running) {
+  Write-Host "[termbridge] Already running (PID $($running.ProcessId))." -ForegroundColor Green
+  exit 0
+}
+if (Test-Path -LiteralPath $pidPath) { Remove-Item -LiteralPath $pidPath -Force }
 
 try {
   if (Test-Path -LiteralPath $configPath) {
@@ -70,10 +95,17 @@ try {
 $bundledNode = Join-Path $root 'runtime\node\node.exe'
 $node = if (Test-Path -LiteralPath $bundledNode) { $bundledNode } else { 'node.exe' }
 
-Push-Location $root
+New-Item -ItemType Directory -Path $logDir -Force | Out-Null
+$process = Start-Process -FilePath $node -ArgumentList ('"' + $serverPath + '"') `
+  -WorkingDirectory $root -NoNewWindow -PassThru
+Set-Content -LiteralPath $pidPath -Value $process.Id -Encoding Ascii -NoNewline
+
 try {
-  & $node (Join-Path $root 'server.js')
-  exit $LASTEXITCODE
+  $process.WaitForExit()
+  exit $process.ExitCode
 } finally {
-  Pop-Location
+  $recordedPid = Get-Content -LiteralPath $pidPath -Raw -ErrorAction SilentlyContinue
+  if ($recordedPid -and $recordedPid.Trim() -eq "$($process.Id)") {
+    Remove-Item -LiteralPath $pidPath -Force -ErrorAction SilentlyContinue
+  }
 }

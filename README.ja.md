@@ -124,8 +124,7 @@ TermBridge は PC でもスマホでも、説明なしで触れる直感的な U
 
 - Windows 10 または 11
 - [Node.js](https://nodejs.org/) 20 以降
-  - もしくは可搬版 Node を `runtime\node\node.exe` に置けば、システムには何もインストールされません
-- [Tailscale](https://tailscale.com/) — 他の端末から使うために必要。なくても動作しますが、その PC 内でのみ使えます
+- [Tailscale](https://tailscale.com/) がインストール済みで、起動・サインインしていること
 
 ## インストール
 
@@ -137,8 +136,8 @@ npm install
 
 ## クイックスタート
 
-`start.bat` をダブルクリックします。初回に `tailscale serve` の設定まで済ませたうえで、
-開くべきアドレスが表示されます。
+`start.bat` をダブルクリックします（`npm start` でも同じです）。ローカルポートの選択と
+`tailscale serve --bg` の設定が行われ、開くべき HTTPS アドレスが表示されます。
 
 ```
 [https] Ready: https://my-pc.tailname.ts.net/
@@ -148,9 +147,10 @@ npm install
 ```
 
 同じ Tailnet にサインインしている端末で 2 つめのアドレスを開けば完了です。serve の設定は
-維持されるので、次回以降はそのまま使われます。
+維持されるので、次回以降はそのまま使われます。同じコピーをもう一度起動した場合は、
+サーバーを二重起動せず正常終了します。
 
-7070番が別のアプリに使われている場合、`start.bat` は7071番以降の空きポートを自動選択し、
+7070番が別のアプリに使われている場合、`start.bat` は最大100候補まで次の空きポートを探し、
 TermBridge本体と `tailscale serve` の両方へ同じ番号を設定します。
 
 内部では `tailscale serve --bg` を使います。HTTPS の443番が別のアプリですでに使われて
@@ -172,7 +172,8 @@ TLS は `tailscale serve` に任せています。**結果として受信ポー�
 powershell -ExecutionPolicy Bypass -File scripts\install-startup.ps1
 ```
 
-解除は `scripts\uninstall-startup.ps1` を実行してください。ログは `logs\termbridge.log` に出ます。
+解除は `scripts\uninstall-startup.ps1` を実行してください。PIDを照合してこのTermBridgeだけを
+停止するため、無関係なNode.jsプロセスには触れません。ログは `logs\termbridge.log` に出ます。
 
 ## 仕組み
 
@@ -242,8 +243,8 @@ Tailscale アドレスにもインターネットにもバインドせず、**�
 空いている HTTPS ポート（8443番または10000番）へ自動設定されるので、起動時に表示される
 ポート付きURLを開いてください。3ポートすべてが使用中の場合は、既存設定を守るため起動を中止します。
 
-**`node` が見つからないと言われる。** Node.js 20 以降を入れるか、可搬版 Node を
-`runtime\node\node.exe` に配置してください。
+**`node` が見つからないと言われる。** Node.js 20 以降をインストールし、`npm install` を
+実行してください。
 
 ## ドキュメント
 
@@ -256,9 +257,10 @@ Tailscale アドレスにもインターネットにもバインドせず、**�
 ## 構成
 
 ```
-server.js     Node サーバー — node-pty で ConPTY を生成し WebSocket で配信
-public/       フロントエンド — xterm.js + VS Code Dark Modern テーマ
-scripts/      起動・自動起動登録スクリプト
+start.bat     Windows向けの推奨起動入口
+server.js     Nodeサーバー — ConPTY、WebSocket、ローカルAPI
+public/       ブラウザクライアントとPWAアセット
+scripts/      ポート選択、Tailscale Serve、ログオンタスク管理
 ```
 
 ## ライセンス

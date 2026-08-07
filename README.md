@@ -127,9 +127,7 @@ nothing to learn before you can use it.
 
 - Windows 10 or 11
 - [Node.js](https://nodejs.org/) 20 or newer
-  - Alternatively, drop a portable Node at `runtime\node\node.exe` and nothing gets
-    installed system-wide
-- [Tailscale](https://tailscale.com/) — needed to reach the machine from any other device. Without it TermBridge still runs, but only on this PC
+- [Tailscale](https://tailscale.com/) installed, running, and signed in
 
 ## Install
 
@@ -141,8 +139,8 @@ npm install
 
 ## Quick start
 
-Double-click `start.bat`. It sets up `tailscale serve` for you on the first run, then
-prints the address to open:
+Double-click `start.bat` (or run `npm start`). It selects a local port, configures
+`tailscale serve --bg`, and prints the HTTPS address to open:
 
 ```
 [https] Ready: https://my-pc.tailname.ts.net/
@@ -152,10 +150,12 @@ prints the address to open:
 ```
 
 Open the second address on any device signed into the same tailnet. That's it — the
-serve setting persists, so later runs just use it.
+Serve setting persists, so later runs reuse it. Starting TermBridge again while this
+copy is already running exits cleanly instead of creating a duplicate server.
 
 If another app is using port 7070, `start.bat` automatically selects the next free
-port and passes the same value to both TermBridge and `tailscale serve`.
+port (up to 100 candidates) and passes the same value to both TermBridge and
+`tailscale serve`.
 
 Under the hood this uses `tailscale serve --bg`. If another app already owns HTTPS
 port 443, its route is preserved and TermBridge automatically tries port 8443, then
@@ -179,7 +179,9 @@ rights needed):
 powershell -ExecutionPolicy Bypass -File scripts\install-startup.ps1
 ```
 
-Remove it with `scripts\uninstall-startup.ps1`. Logs are written to `logs\termbridge.log`.
+Remove it with `scripts\uninstall-startup.ps1`. The scripts keep an exact PID record,
+so uninstalling stops this TermBridge instance without touching unrelated Node.js
+processes. Logs are written to `logs\termbridge.log`.
 
 ## How it fits together
 
@@ -250,8 +252,7 @@ replaced. TermBridge automatically uses a free HTTPS port (8443 or 10000); open 
 port-qualified URL printed at startup. If all three supported HTTPS ports are
 occupied, startup stops rather than replacing an existing route.
 
-**`node` is not recognized.** Install Node.js 20+, or place a portable Node at
-`runtime\node\node.exe`.
+**`node` is not recognized.** Install Node.js 20 or newer, then run `npm install`.
 
 ## Documentation
 
@@ -264,9 +265,10 @@ occupied, startup stops rather than replacing an existing route.
 ## Project layout
 
 ```
-server.js     Node server — spawns ConPTY via node-pty, broadcasts over WebSocket
-public/       Frontend — xterm.js with the VS Code Dark Modern theme
-scripts/      Launch and autostart registration
+start.bat     Recommended Windows entry point
+server.js     Node server — ConPTY, WebSocket, and local APIs
+public/       Browser client and PWA assets
+scripts/      Port selection, Tailscale Serve, and logon-task management
 ```
 
 ## License

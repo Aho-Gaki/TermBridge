@@ -7,6 +7,8 @@ echo.
 
 rem Select a free app port, configure tailscale serve --bg for it, then run Node.
 powershell -NoProfile -ExecutionPolicy Bypass -File "scripts\start.ps1"
+set "exitCode=%errorlevel%"
 echo.
-echo TermBridge has exited. See logs\termbridge.log for details.
+echo TermBridge launcher has exited. See logs\termbridge.log for details.
 pause
+exit /b %exitCode%

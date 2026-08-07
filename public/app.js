@@ -1211,7 +1211,7 @@
         // only reachable when someone has bound it explicitly via `host`.
         el.connState.textContent = msg.serveUrl
           ? msg.serveUrl.replace(/^https:\/\//, '')
-          : (msg.tsIp ? `${msg.tsIp}:${location.port || 80}` : '');
+          : location.host;
         renderEmptyButtons();
         renderPresence(msg.clients);
 
