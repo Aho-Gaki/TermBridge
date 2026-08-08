@@ -848,7 +848,10 @@
     kk.addEventListener('click', () => {
       const t = terms.get(activeId);
       if (!t) return;
-      if (document.activeElement === t.xterm.textarea) t.xterm.blur();
+      if (mobActive()) {
+        if (document.activeElement === el.mobLive) el.mobLive.blur();
+        else mobFocusEditor(t);
+      } else if (document.activeElement === t.xterm.textarea) t.xterm.blur();
       else t.xterm.focus();
     });
   }
@@ -874,6 +877,9 @@
   let mobSyncDeferred = false;
   let mobTouchStart = null;
   let mobSuppressFocusUntil = 0;
+  let mobEditor = null;
+  let mobEditorComposing = false;
+  let mobEditorSyncTimer = null;
 
   const mobActive = () => mqMobile.matches;
   const lineText = (l) => (l ? l.translateToString(true) : '');
@@ -882,6 +888,226 @@
     const s = window.getSelection();
     if (!s || s.isCollapsed || !s.rangeCount) return false;
     return el.mobWrap.contains(s.anchorNode) || el.mobWrap.contains(s.focusNode);
+  }
+
+  function mobLineThroughCursor(line, cursorX) {
+    if (!line) return '';
+    let end = line.length;
+    while (end > 0) {
+      const cell = line.getCell(end - 1);
+      if (cell && cell.getWidth() !== 0 && (cell.getChars() || ' ') !== ' ') break;
+      end--;
+    }
+    return line.translateToString(false, 0, Math.max(end, cursorX));
+  }
+
+  function mobColumnTextOffset(line, column) {
+    let offset = 0;
+    for (let x = 0; line && x < Math.min(column, line.length); x++) {
+      const cell = line.getCell(x);
+      if (!cell || cell.getWidth() === 0) continue;
+      offset += (cell.getChars() || ' ').length;
+    }
+    return offset;
+  }
+
+  function mobBufferEditorState(t) {
+    const b = t.xterm.buffer.active;
+    const absoluteRow = b.baseY + b.cursorY;
+    const line = b.getLine(absoluteRow);
+    return {
+      termId: t.id,
+      row: b.cursorY,
+      absoluteRow,
+      text: mobLineThroughCursor(line, b.cursorX),
+      cursor: mobColumnTextOffset(line, b.cursorX),
+    };
+  }
+
+  function mobSelectionPoint(node, offset) {
+    if (!node || (node !== el.mobLive && !el.mobLive.contains(node))) return null;
+    const before = document.createRange();
+    try {
+      before.selectNodeContents(el.mobLive);
+      before.setEnd(node, offset);
+    } catch {
+      return null;
+    }
+    const text = before.toString();
+    const lines = text.split('\n');
+    return { row: lines.length - 1, offset: lines[lines.length - 1].length };
+  }
+
+  function mobEditorSelection() {
+    const selection = window.getSelection();
+    if (!selection || !selection.rangeCount) return null;
+    const range = selection.getRangeAt(0);
+    const start = mobSelectionPoint(range.startContainer, range.startOffset);
+    const end = mobSelectionPoint(range.endContainer, range.endOffset);
+    return start && end ? { start, end, collapsed: range.collapsed } : null;
+  }
+
+  function mobSetEditorCaret(row, offset) {
+    if (document.activeElement !== el.mobLive || mobEditorComposing || mobHasTextSelection()) return;
+    const lines = el.mobLive.textContent.split('\n');
+    if (row < 0 || row >= lines.length) return;
+    let target = offset;
+    for (let i = 0; i < row; i++) target += lines[i].length + 1;
+    const walker = document.createTreeWalker(el.mobLive, NodeFilter.SHOW_TEXT);
+    let node;
+    while ((node = walker.nextNode())) {
+      if (target <= node.data.length) {
+        const range = document.createRange();
+        range.setStart(node, target);
+        range.collapse(true);
+        const selection = window.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(range);
+        return;
+      }
+      target -= node.data.length;
+    }
+    const range = document.createRange();
+    range.selectNodeContents(el.mobLive);
+    range.collapse(false);
+    const selection = window.getSelection();
+    selection.removeAllRanges();
+    selection.addRange(range);
+  }
+
+  function mobSeedEditor(t, keepInputStart = false) {
+    const state = mobBufferEditorState(t);
+    const sameInput = keepInputStart && mobEditor && mobEditor.termId === t.id && mobEditor.absoluteRow === state.absoluteRow;
+    mobEditor = {
+      ...state,
+      inputStart: sameInput ? Math.min(mobEditor.inputStart, state.cursor) : state.cursor,
+      pendingUntil: 0,
+    };
+    return mobEditor;
+  }
+
+  function mobEnsureEditor(t) {
+    const state = mobBufferEditorState(t);
+    if (!mobEditor || mobEditor.termId !== t.id || mobEditor.absoluteRow !== state.absoluteRow) {
+      return mobSeedEditor(t);
+    }
+    if (!mobEditor.pendingUntil && mobEditor.text !== state.text) return mobSeedEditor(t, true);
+    return mobEditor;
+  }
+
+  function mobSyncCaretPresentation() {
+    const caret = el.mobLive.querySelector('.mob-caret');
+    if (caret) caret.style.visibility = document.activeElement === el.mobLive ? 'hidden' : '';
+  }
+
+  function mobFocusEditor(t, targetOffset = null) {
+    if (!t || !mobActive()) return;
+    const editor = mobEnsureEditor(t);
+    try { el.mobLive.focus({ preventScroll: true }); } catch { el.mobLive.focus(); }
+    mobSyncCaretPresentation();
+    if (mobHasTextSelection()) return;
+    if (targetOffset === null) mobSetEditorCaret(editor.row, editor.cursor);
+    else mobMoveEditorCursor(t, targetOffset);
+  }
+
+  const mobGraphemeCount = (() => {
+    let segmenter = null;
+    try { segmenter = typeof Intl.Segmenter === 'function' ? new Intl.Segmenter(undefined, { granularity: 'grapheme' }) : null; } catch {}
+    return (text) => segmenter ? [...segmenter.segment(text)].length : Array.from(text).length;
+  })();
+
+  function mobMoveEditorCursor(t, targetOffset) {
+    const editor = mobEnsureEditor(t);
+    const target = Math.max(editor.inputStart, Math.min(editor.text.length, targetOffset));
+    let sequence = '';
+    if (target < editor.cursor) sequence = '\x1b[D'.repeat(mobGraphemeCount(editor.text.slice(target, editor.cursor)));
+    else if (target > editor.cursor) sequence = '\x1b[C'.repeat(mobGraphemeCount(editor.text.slice(editor.cursor, target)));
+    if (sequence) {
+      sendInput(t.id, sequence);
+      editor.cursor = target;
+      editor.pendingUntil = performance.now() + 500;
+      mobScheduleEditorSync();
+    }
+    mobSetEditorCaret(editor.row, target);
+  }
+
+  function mobEditorSequence(oldText, newText, cursorOffset) {
+    let start = 0;
+    while (start < oldText.length && start < newText.length && oldText[start] === newText[start]) start++;
+    let oldEnd = oldText.length;
+    let newEnd = newText.length;
+    while (oldEnd > start && newEnd > start && oldText[oldEnd - 1] === newText[newEnd - 1]) {
+      oldEnd--;
+      newEnd--;
+    }
+    let sequence = '';
+    if (cursorOffset > oldEnd) sequence += '\x1b[D'.repeat(mobGraphemeCount(oldText.slice(oldEnd, cursorOffset)));
+    else if (cursorOffset < oldEnd) sequence += '\x1b[C'.repeat(mobGraphemeCount(oldText.slice(cursorOffset, oldEnd)));
+    sequence += '\x7f'.repeat(mobGraphemeCount(oldText.slice(start, oldEnd)));
+    sequence += newText.slice(start, newEnd).replace(/\r?\n/g, '\r');
+    return { sequence, start, newEnd };
+  }
+
+  function mobScheduleEditorSync() {
+    clearTimeout(mobEditorSyncTimer);
+    const delay = mobEditor ? Math.max(0, mobEditor.pendingUntil - performance.now()) + 20 : 20;
+    mobEditorSyncTimer = setTimeout(mobQueueSync, delay);
+  }
+
+  function mobRestoreEditor(t) {
+    mobEditor = null;
+    mobRenderLive(t);
+  }
+
+  function mobApplyEditorInput() {
+    const t = terms.get(activeId);
+    if (!t || document.activeElement !== el.mobLive || !mobActive()) return;
+    const editor = mobEnsureEditor(t);
+    const selection = mobEditorSelection();
+    const lines = el.mobLive.textContent.split('\n');
+    if (!selection || selection.start.row !== editor.row || selection.end.row !== editor.row || editor.row >= lines.length) {
+      mobRestoreEditor(t);
+      return;
+    }
+    const newText = lines[editor.row];
+    const change = mobEditorSequence(editor.text, newText, editor.cursor);
+    if (change.start < editor.inputStart) {
+      mobRestoreEditor(t);
+      mobSetEditorCaret(editor.row, editor.inputStart);
+      return;
+    }
+    if (change.sequence) sendInput(t.id, change.sequence);
+    editor.text = newText;
+    editor.cursor = selection.start.offset;
+    editor.pendingUntil = performance.now() + 500;
+    mobScheduleEditorSync();
+  }
+
+  function mobEditorShouldDefer(t) {
+    if (!mobEditor || mobEditor.termId !== t.id || document.activeElement !== el.mobLive || !mobEditor.pendingUntil) return false;
+    const state = mobBufferEditorState(t);
+    if (state.absoluteRow === mobEditor.absoluteRow && state.text === mobEditor.text && state.cursor === mobEditor.cursor) {
+      mobEditor.pendingUntil = 0;
+      return false;
+    }
+    if (performance.now() >= mobEditor.pendingUntil) {
+      mobEditor.pendingUntil = 0;
+      return false;
+    }
+    mobScheduleEditorSync();
+    return true;
+  }
+
+  function mobReconcileEditor(t) {
+    if (document.activeElement !== el.mobLive || mobEditorComposing || mobHasTextSelection()) return;
+    const state = mobBufferEditorState(t);
+    const keepStart = mobEditor && mobEditor.termId === t.id && mobEditor.absoluteRow === state.absoluteRow;
+    mobEditor = {
+      ...state,
+      inputStart: keepStart ? Math.min(mobEditor.inputStart, state.cursor) : state.cursor,
+      pendingUntil: 0,
+    };
+    mobSetEditorCaret(state.row, state.cursor);
   }
 
   // ---- colored HTML from buffer cells (fg + bold; same palette as xterm)
@@ -911,7 +1137,7 @@
       const c = line.getCell(last);
       if (!c) continue;
       const ch = c.getChars();
-      if ((ch === '' || ch === ' ') && c.isFgDefault()) continue;
+      if (ch === '' || ch === ' ') continue;
       break;
     }
     // The terminal cursor can sit after typed spaces. Keep those otherwise
@@ -963,6 +1189,8 @@
     }
     while (parts.length && parts[parts.length - 1] === '') parts.pop();
     el.mobLive.innerHTML = parts.join('\n');
+    mobSyncCaretPresentation();
+    mobReconcileEditor(t);
   }
 
   function mobRebuild(t) {
@@ -981,7 +1209,7 @@
     if (!t || !mobActive()) return;
     // Replacing a mirrored line while iOS owns a selection cancels the native
     // selection handles. Keep the rendered text stable until it is released.
-    if (mobTouchStart || mobHasTextSelection()) {
+    if (mobTouchStart || mobHasTextSelection() || mobEditorComposing || mobEditorShouldDefer(t)) {
       mobSyncDeferred = true;
       return;
     }
@@ -1035,9 +1263,65 @@
     updateScrollPill();
   }, { passive: true });
 
+  if (isTouch) {
+    // The same visible text owns both selection and keyboard focus on phones.
+    // Styling stays identical; edits are translated to terminal input below.
+    el.mobLive.contentEditable = 'true';
+    el.mobLive.spellcheck = false;
+    el.mobLive.setAttribute('autocapitalize', 'none');
+    el.mobLive.setAttribute('autocomplete', 'off');
+    el.mobLive.setAttribute('autocorrect', 'off');
+    el.mobLive.style.outline = 'none';
+
+    el.mobLive.addEventListener('focus', () => {
+      const t = terms.get(activeId);
+      if (t && mobActive()) mobEnsureEditor(t);
+      mobSyncCaretPresentation();
+    });
+    el.mobLive.addEventListener('blur', mobSyncCaretPresentation);
+
+    el.mobLive.addEventListener('beforeinput', (ev) => {
+      const t = terms.get(activeId);
+      if (!t || !mobActive()) return;
+      const editor = mobEnsureEditor(t);
+      const selection = mobEditorSelection();
+      if (ev.inputType === 'insertParagraph' || ev.inputType === 'insertLineBreak') {
+        ev.preventDefault();
+        mobEditor = null;
+        sendInput(t.id, '\r');
+        mobQueueSync();
+        return;
+      }
+      if (!selection || selection.start.row !== editor.row || selection.end.row !== editor.row || selection.start.offset < editor.inputStart) {
+        ev.preventDefault();
+        mobSetEditorCaret(editor.row, editor.inputStart);
+        return;
+      }
+      if (ev.inputType === 'deleteContentBackward' && selection.collapsed && selection.start.offset <= editor.inputStart) {
+        ev.preventDefault();
+        return;
+      }
+      if (!/^(insert|delete)/.test(ev.inputType)) ev.preventDefault();
+    });
+
+    el.mobLive.addEventListener('input', () => {
+      if (!mobEditorComposing) mobApplyEditorInput();
+    });
+
+    el.mobLive.addEventListener('compositionstart', () => {
+      const t = terms.get(activeId);
+      if (t && mobActive()) mobEnsureEditor(t);
+      mobEditorComposing = true;
+    });
+    el.mobLive.addEventListener('compositionend', () => {
+      mobEditorComposing = false;
+      setTimeout(mobApplyEditorInput, 0);
+    });
+  }
+
   // Let iOS own long-press text selection. A long hold or a drag must never
-  // fall through to the regular tap handler, which would otherwise focus the
-  // hidden xterm and dismiss the selection handles by opening the keyboard.
+  // fall through to the regular tap handler, which would otherwise collapse
+  // the native selection by moving the editable caret.
   el.mobWrap.addEventListener('touchstart', (ev) => {
     const touch = ev.touches[0];
     if (!touch) return;
@@ -1071,11 +1355,42 @@
     return ev.clientY >= rect.top - 4;
   }
 
+  function mobPointFromClient(x, y) {
+    let node = null;
+    let offset = 0;
+    if (document.caretPositionFromPoint) {
+      const position = document.caretPositionFromPoint(x, y);
+      if (position) {
+        node = position.offsetNode;
+        offset = position.offset;
+      }
+    } else if (document.caretRangeFromPoint) {
+      const range = document.caretRangeFromPoint(x, y);
+      if (range) {
+        node = range.startContainer;
+        offset = range.startOffset;
+      }
+    }
+    return mobSelectionPoint(node, offset);
+  }
+
   el.mobWrap.addEventListener('click', (ev) => {
     if (performance.now() < mobSuppressFocusUntil || mobHasTextSelection()) return;
-    if (!mobTapIsAtOrBelowCaret(ev)) return;
     const t = terms.get(activeId);
-    if (t && mobActive()) t.xterm.focus();
+    if (!t || !mobActive()) return;
+    const editor = mobEnsureEditor(t);
+    const point = mobPointFromClient(ev.clientX, ev.clientY);
+    if (point && point.row === editor.row) {
+      mobFocusEditor(t, point.offset);
+      return;
+    }
+    if (!mobTapIsAtOrBelowCaret(ev)) {
+      if (document.activeElement === el.mobLive) el.mobLive.blur();
+      return;
+    }
+    // Tapping the blank part of the current input row means "after the last
+    // character"; there is no DOM text node there for caretRangeFromPoint.
+    mobFocusEditor(t, editor.text.length);
   });
 
   // In the narrow layout the visible terminal is this mirror, not xterm, so it
