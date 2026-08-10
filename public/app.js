@@ -947,8 +947,8 @@
     return start && end ? { start, end, collapsed: range.collapsed } : null;
   }
 
-  function mobSetEditorCaret(row, offset) {
-    if (document.activeElement !== el.mobLive || mobEditorComposing || mobHasTextSelection()) return;
+  function mobSetEditorCaret(row, offset, replaceSelection = false) {
+    if (document.activeElement !== el.mobLive || mobEditorComposing || (!replaceSelection && mobHasTextSelection())) return;
     const lines = el.mobLive.textContent.split('\n');
     if (row < 0 || row >= lines.length) return;
     let target = offset;
@@ -975,12 +975,10 @@
     selection.addRange(range);
   }
 
-  function mobSeedEditor(t, keepInputStart = false) {
+  function mobSeedEditor(t) {
     const state = mobBufferEditorState(t);
-    const sameInput = keepInputStart && mobEditor && mobEditor.termId === t.id && mobEditor.absoluteRow === state.absoluteRow;
     mobEditor = {
       ...state,
-      inputStart: sameInput ? Math.min(mobEditor.inputStart, state.cursor) : state.cursor,
       pendingUntil: 0,
     };
     return mobEditor;
@@ -991,7 +989,7 @@
     if (!mobEditor || mobEditor.termId !== t.id || mobEditor.absoluteRow !== state.absoluteRow) {
       return mobSeedEditor(t);
     }
-    if (!mobEditor.pendingUntil && mobEditor.text !== state.text) return mobSeedEditor(t, true);
+    if (!mobEditor.pendingUntil && mobEditor.text !== state.text) return mobSeedEditor(t);
     return mobEditor;
   }
 
@@ -1016,12 +1014,16 @@
     return (text) => segmenter ? [...segmenter.segment(text)].length : Array.from(text).length;
   })();
 
+  function mobCursorSequence(text, from, to) {
+    if (to < from) return '\x1b[D'.repeat(mobGraphemeCount(text.slice(to, from)));
+    if (to > from) return '\x1b[C'.repeat(mobGraphemeCount(text.slice(from, to)));
+    return '';
+  }
+
   function mobMoveEditorCursor(t, targetOffset) {
     const editor = mobEnsureEditor(t);
-    const target = Math.max(editor.inputStart, Math.min(editor.text.length, targetOffset));
-    let sequence = '';
-    if (target < editor.cursor) sequence = '\x1b[D'.repeat(mobGraphemeCount(editor.text.slice(target, editor.cursor)));
-    else if (target > editor.cursor) sequence = '\x1b[C'.repeat(mobGraphemeCount(editor.text.slice(editor.cursor, target)));
+    const target = Math.max(0, Math.min(editor.text.length, targetOffset));
+    const sequence = mobCursorSequence(editor.text, editor.cursor, target);
     if (sequence) {
       sendInput(t.id, sequence);
       editor.cursor = target;
@@ -1029,6 +1031,23 @@
       mobScheduleEditorSync();
     }
     mobSetEditorCaret(editor.row, target);
+  }
+
+  function mobDeleteBackward(t, editor, selection) {
+    const start = selection.start.offset;
+    const end = selection.collapsed ? start : selection.end.offset;
+    let sequence = mobCursorSequence(editor.text, editor.cursor, end);
+    sequence += '\x7f'.repeat(selection.collapsed ? 1 : mobGraphemeCount(editor.text.slice(start, end)));
+    // Backspace follows the original TermBridge path: send it immediately and
+    // let the PTY redraw, without the optimistic editor's 500 ms hold.
+    editor.pendingUntil = 0;
+    clearTimeout(mobEditorSyncTimer);
+    if (sequence) sendInput(t.id, sequence);
+
+    // Keep iOS's native selection UI, but collapse a consumed range at its
+    // start immediately. The PTY remains authoritative and redraws the text.
+    editor.cursor = selection.collapsed ? end : start;
+    if (!selection.collapsed) mobSetEditorCaret(editor.row, start, true);
   }
 
   function mobEditorSequence(oldText, newText, cursorOffset) {
@@ -1071,11 +1090,6 @@
     }
     const newText = lines[editor.row];
     const change = mobEditorSequence(editor.text, newText, editor.cursor);
-    if (change.start < editor.inputStart) {
-      mobRestoreEditor(t);
-      mobSetEditorCaret(editor.row, editor.inputStart);
-      return;
-    }
     if (change.sequence) sendInput(t.id, change.sequence);
     editor.text = newText;
     editor.cursor = selection.start.offset;
@@ -1101,10 +1115,8 @@
   function mobReconcileEditor(t) {
     if (document.activeElement !== el.mobLive || mobEditorComposing || mobHasTextSelection()) return;
     const state = mobBufferEditorState(t);
-    const keepStart = mobEditor && mobEditor.termId === t.id && mobEditor.absoluteRow === state.absoluteRow;
     mobEditor = {
       ...state,
-      inputStart: keepStart ? Math.min(mobEditor.inputStart, state.cursor) : state.cursor,
       pendingUntil: 0,
     };
     mobSetEditorCaret(state.row, state.cursor);
@@ -1292,13 +1304,14 @@
         mobQueueSync();
         return;
       }
-      if (!selection || selection.start.row !== editor.row || selection.end.row !== editor.row || selection.start.offset < editor.inputStart) {
+      if (!selection || selection.start.row !== editor.row || selection.end.row !== editor.row) {
         ev.preventDefault();
-        mobSetEditorCaret(editor.row, editor.inputStart);
+        mobSetEditorCaret(editor.row, editor.cursor, true);
         return;
       }
-      if (ev.inputType === 'deleteContentBackward' && selection.collapsed && selection.start.offset <= editor.inputStart) {
+      if (ev.inputType === 'deleteContentBackward') {
         ev.preventDefault();
+        mobDeleteBackward(t, editor, selection);
         return;
       }
       if (!/^(insert|delete)/.test(ev.inputType)) ev.preventDefault();
