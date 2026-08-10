@@ -61,6 +61,7 @@ running.
 
 - **Add to home screen** — on iOS use Safari's Share menu, on Android use Chrome's menu. It then launches from its own icon and runs as a full-screen web app. No app install required
 - **The terminal is mirrored as real text** on narrow screens, so text selection and copy use the OS's own handles instead of fighting a canvas — this is what makes selection work properly on iOS
+- **Edit the command line with the phone's own keyboard.** Tap anywhere on it to put the cursor there, then insert, delete, and convert text exactly as you would in any text field — IME conversion included. Edits are translated into terminal input, and the shell stays the source of truth
 - **Key bar** for `Esc` / `Tab` / `Ctrl` / `^C` / paste / arrows — the keys a software keyboard hides — plus a button to show and hide the keyboard itself
 - **Bottom navigation** for tabs, new terminal, files, and memo
 - **Tab list as a bottom sheet**, reachable with a thumb
@@ -226,7 +227,7 @@ Copy `config.json.example` to `config.json`. All keys are optional.
 |---|---|---|
 | `port` | `7070` | Preferred listening port; `start.bat` selects the next free port when it is occupied |
 | `httpsPort` | `443` | Tailscale HTTPS port. If omitted, startup tries 443 and then 8443; set it to use a specific free port |
-| `host` | `127.0.0.1` | Listening address. Setting it serves plain http on that address as well — only useful behind your own TLS proxy. `"all"` binds every interface (**not recommended**) |
+| `host` | `127.0.0.1` | Listening address. Pointing it at another interface serves plain http there as well — only useful behind your own TLS proxy. `"all"` binds every interface (**not recommended**) |
 | `token` | none | Access token. Setting it makes authentication mandatory |
 
 The environment variables `PORT`, `TERMBRIDGE_HOST`, and `TERMBRIDGE_TOKEN` work too.
@@ -246,6 +247,11 @@ are on your tailnet, turn on token authentication as well.
 See [SECURITY.md](SECURITY.md) for the threat model and hardening steps.
 
 ## Troubleshooting
+
+**Startup stops at the `[https]` line.** `tailscale serve` is configured before the
+server launches, so Tailscale has to be installed, running, and signed in. Check with
+`tailscale status`. To run without Tailscale — reachable from this PC only — use
+`npm run start:local`.
 
 **Other devices can't connect.** Restart `start.bat` and use the
 `https://<machine>.<tailnet>.ts.net/` address it prints. Inspect the active mapping

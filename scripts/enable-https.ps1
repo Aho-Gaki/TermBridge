@@ -12,6 +12,12 @@ $tailscale = if ($env:TAILSCALE_EXE) {
   'C:\Program Files\Tailscale\tailscale.exe'
 }
 
+# Without this the caller only sees PowerShell's raw CommandNotFoundException,
+# which does not say what is actually missing.
+if (-not (Get-Command $tailscale -ErrorAction SilentlyContinue)) {
+  throw "Tailscale was not found at $tailscale. Install Tailscale and sign in, or point TAILSCALE_EXE at it."
+}
+
 function Get-ServeConfig([string]$Executable) {
   $output = & $Executable serve status --json 2>&1 | Out-String
   if ($LASTEXITCODE -ne 0) {

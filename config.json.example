@@ -1,6 +1,6 @@
 {
   "port": 7070,
   "httpsPort": 443,
-  "host": "",
+  "host": "127.0.0.1",
   "token": ""
 }

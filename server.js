@@ -17,7 +17,7 @@ try {
 } catch {}
 
 const PORT = parseInt(process.env.TERMBRIDGE_RUNTIME_PORT || cfg.port || process.env.PORT || '7070', 10);
-const HOST = cfg.host || process.env.TERMBRIDGE_HOST || ''; // '' = tailscale + loopback, 'all' = 0.0.0.0
+const HOST = cfg.host || process.env.TERMBRIDGE_HOST || ''; // '' = loopback only, 'all' = 0.0.0.0
 const TOKEN = cfg.token || process.env.TERMBRIDGE_TOKEN || '';
 
 // mirror console output to logs/termbridge.log (for hidden autostart runs)
