@@ -160,12 +160,10 @@ port (up to 100 candidates) and passes the same value to both TermBridge and
 `tailscale serve`.
 
 Under the hood this uses `tailscale serve --bg`. If another app already owns HTTPS
-port 443, its route is preserved and TermBridge tries the conventional alternative,
-8443. In that case, open the URL it prints, such as
-`https://my-pc.tailname.ts.net:8443/`.
-
-If both are occupied, startup stops instead of guessing another port. Set
-`httpsPort` in `config.json` to any free port you prefer, then run `start.bat` again.
+port 443, its route is preserved and TermBridge takes the next free port instead —
+8443 first, then upward. In that case, open the URL it prints, such as
+`https://my-pc.tailname.ts.net:8443/`. Set `httpsPort` in `config.json` to pin a
+specific port rather than letting it choose.
 
 **Why not just the tailnet IP?** Because a browser only hands the OS clipboard to a
 page in a secure context. Over plain http, `Ctrl+V` cannot read what you copied
@@ -226,7 +224,7 @@ Copy `config.json.example` to `config.json`. All keys are optional.
 | Key | Default | Description |
 |---|---|---|
 | `port` | `7070` | Preferred listening port; `start.bat` selects the next free port when it is occupied |
-| `httpsPort` | `443` | Tailscale HTTPS port. If omitted, startup tries 443 and then 8443; set it to use a specific free port |
+| `httpsPort` | `443` | Tailscale HTTPS port. If omitted, startup takes the first free one — 443, then 8443 and upward; set it to pin a specific port |
 | `host` | `127.0.0.1` | Listening address. Pointing it at another interface serves plain http there as well — only useful behind your own TLS proxy. `"all"` binds every interface (**not recommended**) |
 | `token` | none | Access token. Setting it makes authentication mandatory |
 
@@ -258,9 +256,9 @@ server launches, so Tailscale has to be installed, running, and signed in. Check
 with `tailscale serve status`. No firewall change is needed — the app never accepts
 a connection from the network directly.
 
-**Ports 443 and 8443 already have `tailscale serve` routes.** Existing routes are not
-replaced. Copy `config.json.example` to `config.json`, choose a free `httpsPort`, and
-restart `start.bat`.
+**The URL has a port number on the end.** Port 443 was already taken by another
+`tailscale serve` route, so TermBridge took the next free one rather than replacing
+it. Open the address it prints. To pin a port, set `httpsPort` in `config.json`.
 
 **`node` is not recognized.** Install Node.js 20 or newer, then run `npm install`.
 
