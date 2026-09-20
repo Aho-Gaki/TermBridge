@@ -633,23 +633,18 @@ kbd {
 
   #app { --mobile-nav-h: calc(52px + env(safe-area-inset-bottom, 0px)); }
 
-  /* the status bar becomes a slim top strip */
+  /* The status bar becomes a slim top strip. No rule under it: on a phone the
+     strip starts right below the clock, and a line there reads as a bar
+     bolted to the top of the screen rather than as part of the page. */
   #statusBar {
     order: -1;
     border-top: none;
-    border-bottom: 1px solid var(--border);
+    border-bottom: none;
     height: calc(var(--status-h) + 8px + env(safe-area-inset-top, 0px));
     padding-top: calc(env(safe-area-inset-top, 0px) + 4px);
     padding-bottom: 4px;
   }
 
-  /* Carry the band straight through this strip so the top of the screen is
-     one bar, not a black one sitting on a lighter one. A wallpaper still
-     shows through, and the light theme keeps its light strip. */
-  html:not(.wp):not(.light) #statusBar {
-    background: #000;
-    border-bottom-color: #101010;
-  }
   #main { border-top: none; }
 
   /* file / memo move into the bottom nav */
@@ -686,24 +681,6 @@ kbd {
 }
 
 /* ---------------------------------------------------------------- memo panel */
-
-/* Home-screen launch: iOS hands the app the whole screen and draws the clock
-   on top of it. Whatever happened to be under that strip showed through a
-   translucent overlay and came out washed out, so paint it solid instead --
-   the clock then sits on a bar, the way it does in a native app. The inset
-   is zero in a browser tab, which collapses this to nothing.
-   Always dark: black-translucent draws the clock in white. */
-body::before {
-  content: "";
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: env(safe-area-inset-top, 0px);
-  background: #000;
-  z-index: 100;
-  pointer-events: none;
-}
 
 #app { position: relative; }
 
