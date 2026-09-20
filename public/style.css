@@ -642,6 +642,14 @@ kbd {
     padding-top: calc(env(safe-area-inset-top, 0px) + 4px);
     padding-bottom: 4px;
   }
+
+  /* Carry the band straight through this strip so the top of the screen is
+     one bar, not a black one sitting on a lighter one. A wallpaper still
+     shows through, and the light theme keeps its light strip. */
+  html:not(.wp):not(.light) #statusBar {
+    background: #000;
+    border-bottom-color: #101010;
+  }
   #main { border-top: none; }
 
   /* file / memo move into the bottom nav */
