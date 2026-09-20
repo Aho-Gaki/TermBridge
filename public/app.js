@@ -1454,6 +1454,11 @@
     // and jolt UIKit into re-laying-out by touching the viewport meta tag.
     let lastNudge = 0;
     let wallpaperHeight = 0;
+    // The window is not the screen. With an opaque iOS status bar the web
+    // view legitimately starts below it, so "shorter than the screen" would
+    // be true forever and the rescue below would stretch the app past the
+    // bottom of the view. Learn the real full height per orientation instead.
+    const fullHeight = { portrait: 0, landscape: 0 };
     const nudgeWebView = () => {
       const now = Date.now();
       if (now - lastNudge < 3000) return;
@@ -1467,9 +1472,13 @@
 
     const applyViewport = () => {
       const keyboardClosed = window.innerHeight - visualViewport.height < 40;
-      const expected = matchMedia('(orientation: portrait)').matches
+      const orientation = matchMedia('(orientation: portrait)').matches ? 'portrait' : 'landscape';
+      if (keyboardClosed) {
+        fullHeight[orientation] = Math.max(fullHeight[orientation], window.innerHeight);
+      }
+      const expected = fullHeight[orientation] || (orientation === 'portrait'
         ? Math.max(screen.height, screen.width)
-        : Math.min(screen.height, screen.width);
+        : Math.min(screen.height, screen.width));
       // iOS can report a visual viewport that stops above a small, black
       // letterbox after the keyboard has closed.  Use the real screen height
       // for that case so the app (and its wallpaper) reaches the bottom.

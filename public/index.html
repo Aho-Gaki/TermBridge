@@ -6,7 +6,10 @@
 <meta name="theme-color" content="#181818">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<!-- "black" keeps the web view below the iOS status bar. "black-translucent" put
+     the clock on top of the page, which cost a 59px band the app could only fill
+     with background colour, under a translucent overlay that washed it out. -->
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="apple-mobile-web-app-title" content="TermBridge">
 <title>TermBridge</title>
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
