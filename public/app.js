@@ -90,7 +90,8 @@
     wpOpacityDialog: $('wpOpacityDialog'), wpOpacity: $('wpOpacity'),
     wpOpacityValue: $('wpOpacityValue'), wpOpacityCancel: $('wpOpacityCancel'),
     navTabs: $('navTabs'), navCount: $('navCount'),
-    navFiles: $('navFiles'), navMemo: $('navMemo'), scrollBottom: $('scrollBottom'),
+    navFiles: $('navFiles'), navMemo: $('navMemo'), navSet: $('navSet'),
+    scrollBottom: $('scrollBottom'),
     mobWrap: $('mobWrap'), mobHist: $('mobHist'), mobLive: $('mobLive'),
     tabSheet: $('tabSheet'), sheetTabs: $('sheetTabs'), sheetShells: $('sheetShells'),
   };
@@ -738,6 +739,10 @@
 
   function setConn(state, { key = null, text = null }) {
     lastConn = { state, key, text };
+    // Phones hide the status strip while the link is healthy (see style.css):
+    // 30px of chrome under the clock to say "still connected" is not a trade
+    // worth making on a screen this size.
+    document.documentElement.classList.toggle('conn-warn', state !== 'ok');
     el.remoteChip.classList.toggle('connecting', state === 'connecting');
     el.remoteChip.classList.toggle('offline', state === 'offline');
     el.remoteLabel.textContent = key ? i18n.t(key) : text;
@@ -1705,7 +1710,7 @@
     applyWallpaper();
   }
 
-  el.setBtn.addEventListener('click', () => {
+  function openSettings(anchor) {
     const kindLabel = myKind === 'mobile' ? i18n.t('kind.mobile') : i18n.t('kind.pc');
     const items = [
       { label: i18n.t(themeMode === 'light' ? 'set.dark' : 'set.light'), action: () => setThemeMode(themeMode === 'light' ? 'dark' : 'light') },
@@ -1713,7 +1718,7 @@
         label: `${i18n.t('lang.switch')}: ${i18n.name(i18n.lang)}`,
         action: () => showMenuItems(
           i18n.langs.map((l) => ({ label: i18n.name(l), action: () => i18n.setLang(l) })),
-          { anchor: el.setBtn },
+          { anchor },
         ),
       },
       { label: i18n.t('set.wpSet', { kind: kindLabel }), action: () => el.wpInput.click() },
@@ -1738,8 +1743,11 @@
         },
       });
     }
-    showMenuItems(items, { anchor: el.setBtn });
-  });
+    showMenuItems(items, { anchor });
+  }
+
+  el.setBtn.addEventListener('click', () => openSettings(el.setBtn));
+  el.navSet.addEventListener('click', () => openSettings(el.navSet));
 
   function closeWallpaperOpacityDialog() {
     el.wpOpacityDialog.hidden = true;

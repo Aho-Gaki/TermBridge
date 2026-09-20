@@ -24,6 +24,7 @@
       'nav.tabs': 'タブ',
       'nav.files': 'ファイル',
       'nav.memo': 'メモ',
+      'nav.settings': '設定',
       'sheet.title': 'ターミナル',
 
       // status bar
@@ -190,6 +191,7 @@
       'nav.tabs': 'Tabs',
       'nav.files': 'Files',
       'nav.memo': 'Notes',
+      'nav.settings': 'Settings',
       'sheet.title': 'Terminals',
 
       'status.connecting': 'Connecting…',

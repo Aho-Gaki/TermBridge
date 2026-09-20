@@ -633,17 +633,29 @@ kbd {
 
   #app { --mobile-nav-h: calc(52px + env(safe-area-inset-bottom, 0px)); }
 
-  /* The status bar becomes a slim top strip. No rule under it: on a phone the
-     strip starts right below the clock, and a line there reads as a bar
-     bolted to the top of the screen rather than as part of the page. */
+  /* Nothing of ours sits under the clock. The app background runs to the top
+     of the screen and the workspace starts right below the system strip,
+     the way a native app lays out. */
+  #app { padding-top: env(safe-area-inset-top, 0px); }
+
+  /* The status strip floats over the workspace instead of reserving a row,
+     and only while the link is unhealthy -- settings moved to the nav, so
+     nothing here is needed to operate the app. */
   #statusBar {
+    position: absolute;
+    top: env(safe-area-inset-top, 0px);
+    left: 0;
+    right: 0;
+    z-index: 60;
     order: -1;
     border-top: none;
     border-bottom: none;
-    height: calc(var(--status-h) + 8px + env(safe-area-inset-top, 0px));
-    padding-top: calc(env(safe-area-inset-top, 0px) + 4px);
-    padding-bottom: 4px;
+    height: var(--status-h);
+    padding-top: 0;
+    padding-bottom: 0;
   }
+  html:not(.conn-warn) #statusBar { display: none; }
+  #setBtn { display: none; }
 
   #main { border-top: none; }
 
