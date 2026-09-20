@@ -633,13 +633,16 @@ kbd {
 
   #app { --mobile-nav-h: calc(52px + env(safe-area-inset-bottom, 0px)); }
 
+  /* Top of the screen: the system strip, then room to breathe, then us. */
+  html { --top-inset: calc(env(safe-area-inset-top, 0px) + 20px); }
+
   /* the status bar becomes a slim top strip */
   #statusBar {
     order: -1;
     border-top: none;
     border-bottom: 1px solid var(--border);
-    height: calc(var(--status-h) + 8px + env(safe-area-inset-top, 0px));
-    padding-top: calc(env(safe-area-inset-top, 0px) + 4px);
+    height: calc(var(--status-h) + 4px + var(--top-inset));
+    padding-top: var(--top-inset);
     padding-bottom: 4px;
   }
   #main { border-top: none; }
@@ -661,7 +664,7 @@ kbd {
     height: auto;
     border: none;
     border-radius: 0;
-    padding-top: env(safe-area-inset-top, 0px);
+    padding-top: var(--top-inset);
   }
 
   #toast { bottom: calc(64px + var(--status-h) + env(safe-area-inset-bottom, 0px)); }
@@ -1058,7 +1061,7 @@ html.wp .ed-panel {
     width: auto;
     border: none;
     border-radius: 0;
-    padding-top: env(safe-area-inset-top, 0px);
+    padding-top: var(--top-inset);
   }
   .ex-cols, .ex-row { grid-template-columns: minmax(0, 1fr) 56px 40px; }
   .ex-cell-mtime, .ex-cell-type { display: none; }
@@ -1109,7 +1112,7 @@ html.wp .ed-panel {
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    padding: calc(env(safe-area-inset-top, 0px) + 8px) 0 0;
+    padding: var(--top-inset) 0 0;
     border: none;
     border-radius: 0;
     background: transparent;
