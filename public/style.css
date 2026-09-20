@@ -654,7 +654,8 @@ kbd {
     z-index: 50;
   }
 
-  .memo-panel {
+  .memo-panel,
+  .ed-panel {
     inset: 0;
     width: auto;
     height: auto;
@@ -833,10 +834,17 @@ html.wp .ed-panel {
   font-size: 13px;
   line-height: 1.5;
   padding: 8px 10px;
-  white-space: pre;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
   overflow: auto;
+  min-height: 0;
   -webkit-user-select: text;
   user-select: text;
+}
+
+/* iOS zooms the whole page when a focused field is under 16px. */
+@media (pointer: coarse) {
+  #edText { font-size: 16px; }
 }
 
 /* ---------------------------------------------------------------- explorer panel */

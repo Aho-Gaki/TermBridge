@@ -83,7 +83,7 @@
     exBtnBack: $('exBtnBack'), exBtnFwd: $('exBtnFwd'), exBtnUp: $('exBtnUp'),
     exAddr: $('exAddr'), exBtnRefresh: $('exBtnRefresh'), exBtnHidden: $('exBtnHidden'),
     exBtnNewDir: $('exBtnNewDir'), exBtnNewFile: $('exBtnNewFile'),
-    exBtnPaste: $('exBtnPaste'), exBtnClose: $('exBtnClose'),
+    exBtnCopyPath: $('exBtnCopyPath'), exBtnPaste: $('exBtnPaste'), exBtnClose: $('exBtnClose'),
     exList: $('exList'), exCount: $('exCount'), exMsg: $('exMsg'), exPins: $('exPins'),
     exCols: [...document.querySelectorAll('.ex-cols button')],
     setBtn: $('setBtn'), wpInput: $('wpInput'), toast: $('toast'),
@@ -2016,6 +2016,7 @@
     // Moving a file means cut here, paste there. On a phone the list is often
     // full, leaving no blank strip to long-press, so the destination folder
     // needs a paste control that is always reachable.
+    el.exBtnCopyPath.disabled = !exCur;
     el.exBtnPaste.hidden = !exClip || !exCur;
     if (exClip) {
       el.exBtnPaste.title = i18n.t(exClip.op === 'cut' ? 'ex.pasteMove' : 'ex.pasteCopy', { name: exClip.name });
@@ -2112,6 +2113,13 @@
       if (terms.has(r.termId)) activate(r.termId);
       else pendingActivate = r.termId;
     } catch (e) { exShowMsg(e.message, true); }
+  }
+
+  // The open folder, quoted the same way a selected item is.
+  function exCopyCurPath() {
+    if (!exCur) return;
+    copyText('"' + exCur + '"');
+    exShowMsg(i18n.t('msg.pathCopied'));
   }
 
   function exCopyPath() {
@@ -2326,6 +2334,7 @@
       items.push(...folderShellItems(exCur));
       items.push({ label: i18n.t('menu.newFolder'), action: () => exCreate('dir') });
       items.push({ label: i18n.t('menu.newFile'), action: () => exCreate('file') });
+      items.push({ label: i18n.t('menu.copyCurPath'), action: () => exCopyCurPath() });
       if (exClip) items.push({ label: i18n.t('menu.paste'), action: () => exPaste() });
     }
     items.push({ label: i18n.t('menu.refresh'), action: () => exRefreshList() });
@@ -2394,6 +2403,7 @@
   });
   el.exBtnNewDir.addEventListener('click', () => exCreate('dir'));
   el.exBtnNewFile.addEventListener('click', () => exCreate('file'));
+  el.exBtnCopyPath.addEventListener('click', () => exCopyCurPath());
   el.exBtnPaste.addEventListener('click', () => exPaste());
   el.exBtnBack.addEventListener('click', () => {
     if (exStack.back.length) { exStack.fwd.push(exCur); exLoad(exStack.back.pop(), { push: false }); }
