@@ -94,6 +94,7 @@
     scrollBottom: $('scrollBottom'),
     mobWrap: $('mobWrap'), mobHist: $('mobHist'), mobLive: $('mobLive'),
     tabSheet: $('tabSheet'), sheetTabs: $('sheetTabs'), sheetShells: $('sheetShells'),
+    setSheet: $('setSheet'), setSheetTitle: $('setSheetTitle'), setRows: $('setRows'),
   };
 
   // ---- state
@@ -739,10 +740,6 @@
 
   function setConn(state, { key = null, text = null }) {
     lastConn = { state, key, text };
-    // Phones hide the status strip while the link is healthy (see style.css):
-    // 30px of chrome under the clock to say "still connected" is not a trade
-    // worth making on a screen this size.
-    document.documentElement.classList.toggle('conn-warn', state !== 'ok');
     el.remoteChip.classList.toggle('connecting', state === 'connecting');
     el.remoteChip.classList.toggle('offline', state === 'offline');
     el.remoteLabel.textContent = key ? i18n.t(key) : text;
@@ -1710,16 +1707,20 @@
     applyWallpaper();
   }
 
-  function openSettings(anchor) {
+  // Phones get the full-screen sheet the other nav buttons open; a pointer
+  // gets the popup menu it has always had.
+  function settingsItems(anchor, asSheet) {
     const kindLabel = myKind === 'mobile' ? i18n.t('kind.mobile') : i18n.t('kind.pc');
     const items = [
       { label: i18n.t(themeMode === 'light' ? 'set.dark' : 'set.light'), action: () => setThemeMode(themeMode === 'light' ? 'dark' : 'light') },
       {
         label: `${i18n.t('lang.switch')}: ${i18n.name(i18n.lang)}`,
-        action: () => showMenuItems(
-          i18n.langs.map((l) => ({ label: i18n.name(l), action: () => i18n.setLang(l) })),
-          { anchor },
-        ),
+        stayOpen: asSheet,
+        action: () => {
+          const langs = i18n.langs.map((l) => ({ label: i18n.name(l), action: () => i18n.setLang(l) }));
+          if (asSheet) renderSetSheet(langs, i18n.t('lang.switch'));
+          else showMenuItems(langs, { anchor });
+        },
       },
       { label: i18n.t('set.wpSet', { kind: kindLabel }), action: () => el.wpInput.click() },
     ];
@@ -1743,11 +1744,51 @@
         },
       });
     }
-    showMenuItems(items, { anchor });
+    return items;
   }
 
-  el.setBtn.addEventListener('click', () => openSettings(el.setBtn));
-  el.navSet.addEventListener('click', () => openSettings(el.navSet));
+  function renderSetSheet(items, title) {
+    el.setSheetTitle.textContent = title || i18n.t('nav.settings');
+    el.setRows.textContent = '';
+    for (const it of items) {
+      const row = document.createElement('div');
+      row.className = 'sheet-row';
+      row.setAttribute('role', 'button');
+      row.tabIndex = 0;
+      const nm = document.createElement('span');
+      nm.className = 'sheet-name';
+      nm.textContent = it.label;
+      row.appendChild(nm);
+      row.addEventListener('click', () => {
+        if (!it.stayOpen) closeSetSheet();
+        it.action();
+      });
+      el.setRows.appendChild(row);
+    }
+  }
+
+  function openSetSheet() {
+    setExOpen(false);
+    setMemoOpen(false);
+    closeSheet();
+    renderSetSheet(settingsItems(el.navSet, true));
+    el.setSheet.hidden = false;
+    el.navSet.classList.add('on');
+    syncMobilePanelBackdrop();
+  }
+
+  function closeSetSheet() {
+    el.setSheet.hidden = true;
+    el.navSet.classList.remove('on');
+    syncMobilePanelBackdrop();
+  }
+
+  el.setBtn.addEventListener('click', () => showMenuItems(settingsItems(el.setBtn, false), { anchor: el.setBtn }));
+  el.setSheet.querySelector('.sheet-backdrop').addEventListener('click', closeSetSheet);
+  el.navSet.addEventListener('click', () => {
+    if (!edClose()) return;
+    if (el.setSheet.hidden) openSetSheet(); else closeSetSheet();
+  });
 
   function closeWallpaperOpacityDialog() {
     el.wpOpacityDialog.hidden = true;
@@ -1885,14 +1926,15 @@
 
   el.navTabs.addEventListener('click', () => {
     if (!edClose()) return;
+    closeSetSheet();
     if (el.tabSheet.hidden) openSheet(); else closeSheet();
   });
   el.tabSheet.querySelector('.sheet-backdrop').addEventListener('click', closeSheet);
-  el.navFiles.addEventListener('click', () => { if (edClose()) setExOpen(el.exPanel.hidden); });
-  el.navMemo.addEventListener('click', () => { if (edClose()) setMemoOpen(el.memoPanel.hidden); });
+  el.navFiles.addEventListener('click', () => { if (edClose()) { closeSetSheet(); setExOpen(el.exPanel.hidden); } });
+  el.navMemo.addEventListener('click', () => { if (edClose()) { closeSetSheet(); setMemoOpen(el.memoPanel.hidden); } });
   function syncMobilePanelBackdrop() {
     const open = !el.exPanel.hidden || !el.memoPanel.hidden || !el.tabSheet.hidden
-      || !el.edPanel.hidden;
+      || !el.edPanel.hidden || !el.setSheet.hidden;
     el.panelBackdrop.hidden = !mqMobile.matches || !open;
   }
 
@@ -2640,6 +2682,7 @@
     renderTabs();
     renderEmptyButtons();
     renderSheet();
+    if (!el.setSheet.hidden) renderSetSheet(settingsItems(el.navSet, true));
     renderPins();
     setConn(lastConn.state, lastConn);
     if (!el.exPanel.hidden) renderEx();
