@@ -645,7 +645,12 @@ kbd {
     padding-top: var(--top-inset);
     padding-bottom: 4px;
   }
-  #main { border-top: none; }
+  /* The terminal starts a little below the status strip rather than right
+     against it. One number, in case it wants to be a different one. */
+  #main {
+    border-top: none;
+    padding-top: 16px;
+  }
 
   /* file / memo / settings move into the bottom nav */
   #fileToggle, #memoToggle, #setBtn { display: none; }
