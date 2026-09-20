@@ -118,7 +118,12 @@
       <button id="exBtnUp" class="icon-btn" data-i18n-title="ex.up" title="上へ">
         <svg viewBox="0 0 16 16"><path d="M8 12.5v-9M3.5 8 8 3.5 12.5 8" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </button>
-      <input id="exAddr" class="ex-addr" spellcheck="false" autocomplete="off" data-i18n-aria="ex.addr" aria-label="アドレス">
+      <div class="ex-addr-wrap">
+        <input id="exAddr" class="ex-addr" spellcheck="false" autocomplete="off" data-i18n-aria="ex.addr" aria-label="アドレス">
+        <button id="exBtnCopyPath" class="icon-btn ex-addr-copy" data-i18n-title="ex.copyPath" data-i18n-aria="ex.copyPath" title="このフォルダーのパスをコピー" aria-label="このフォルダーのパスをコピー">
+          <svg viewBox="0 0 16 16"><path d="M6 2.5h5.5a1 1 0 0 1 1 1V10" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"/><rect x="3.5" y="5.5" width="7" height="8" rx="1" fill="none" stroke="currentColor" stroke-width="1.1"/></svg>
+        </button>
+      </div>
       <button id="exBtnRefresh" class="icon-btn" data-i18n-title="ex.refresh" title="最新の情報に更新">
         <svg viewBox="0 0 16 16"><path d="M13 8a5 5 0 1 1-1.5-3.5M13 2.5v3h-3" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </button>
@@ -132,9 +137,6 @@
       </button>
       <button id="exBtnNewFile" class="icon-btn" data-i18n-title="ex.newFile" title="新しいファイル">
         <svg viewBox="0 0 16 16"><path d="M4 1.5h5.5L12.5 5v9.5h-8.5z" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"/><path d="M8.2 7.5v4M6.2 9.5h4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
-      </button>
-      <button id="exBtnCopyPath" class="icon-btn" data-i18n-title="ex.copyPath" data-i18n-aria="ex.copyPath" title="このフォルダーのパスをコピー" aria-label="このフォルダーのパスをコピー">
-        <svg viewBox="0 0 16 16"><path d="M6 2.5h5.5a1 1 0 0 1 1 1V10" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"/><rect x="3.5" y="5.5" width="7" height="8" rx="1" fill="none" stroke="currentColor" stroke-width="1.1"/></svg>
       </button>
       <button id="exBtnPaste" class="icon-btn" hidden>
         <svg viewBox="0 0 16 16"><path d="M6 2.5h4v2H6zM5.5 3.5H4a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-9a1 1 0 0 0-1-1h-1.5" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"/></svg>

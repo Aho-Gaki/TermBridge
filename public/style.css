@@ -892,6 +892,35 @@ html.wp .ed-panel {
   flex: none;
 }
 
+/* The copy control lives inside the field that shows the path, so the
+   toolbar does not grow another icon and the button reads as "this path". */
+.ex-addr-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1 1 140px;
+  min-width: 100px;
+  margin: 0 4px;
+}
+
+.ex-addr-wrap .ex-addr {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  padding-right: 30px;
+}
+
+.ex-addr-wrap .ex-addr-copy {
+  position: absolute;
+  right: 3px;
+  width: 22px;
+  height: 22px;
+  flex: none;
+}
+.ex-addr-wrap .ex-addr-copy svg { width: 14px; height: 14px; }
+.ex-addr-wrap .ex-addr-copy:disabled { opacity: 0.35; }
+.ex-addr-wrap .ex-addr-copy:disabled:hover { background: none; }
+
 .ex-addr {
   flex: 1 1 140px;
   min-width: 100px;
@@ -1205,6 +1234,10 @@ html.wp .ed-panel {
   .strip-close { width: 22px; height: 22px; }
   .icon-btn { width: 30px; height: 30px; }
   .icon-btn.narrow { width: 20px; }
+  .ex-addr { height: 34px; }
+  .ex-addr-wrap .ex-addr { padding-right: 34px; }
+  .ex-addr-wrap .ex-addr-copy { width: 28px; height: 28px; }
+  .ex-addr-wrap .ex-addr-copy svg { width: 16px; height: 16px; }
   #keybar button { padding: 6px 10px; font-size: 13px; min-width: 44px; }
 }
 
