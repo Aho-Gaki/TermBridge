@@ -905,6 +905,73 @@ app.post('/api/fs/run', fsAuth, async (req, res) => {
   res.json({ termId: term.id, unrolled: unroll });
 });
 
+// ---------------------------------------------------------------- text editor
+// Enough to fix a config or a script from a phone -- nothing more. Binary and
+// oversized files are refused rather than mangled, and a write only lands when
+// the file on disk still matches the one the client opened.
+
+const EDIT_MAX = 512 * 1024;
+
+// A NUL byte in the first chunk is how every editor guesses "this is binary".
+function looksBinary(buf) {
+  return buf.subarray(0, 8000).includes(0);
+}
+
+app.get('/api/fs/read', fsAuth, async (req, res) => {
+  const p = normPath(String(req.query.path || ''));
+  if (!p) return res.status(400).json({ error: 'err.badPath' });
+  try {
+    const st = await fs.promises.stat(p);
+    if (st.isDirectory()) return res.status(400).json({ error: 'err.badPath' });
+    if (st.size > EDIT_MAX) return res.status(413).json({ error: 'err.tooBig' });
+    const buf = await fs.promises.readFile(p);
+    if (looksBinary(buf)) return res.status(415).json({ error: 'err.binary' });
+    const bom = buf.length >= 3 && buf[0] === 0xef && buf[1] === 0xbb && buf[2] === 0xbf;
+    const text = buf.toString('utf8').slice(bom ? 1 : 0);
+    res.json({
+      path: p,
+      name: path.win32.basename(p),
+      content: text.replace(/\r\n/g, '\n'),
+      bom,
+      crlf: text.includes('\r\n'),
+      mtime: st.mtimeMs,
+    });
+  } catch (e) {
+    res.status(e.code === 'ENOENT' ? 404 : 500).json({ error: e.code === 'ENOENT' ? 'err.notFound' : e.message });
+  }
+});
+
+app.post('/api/fs/write', fsAuth, async (req, res) => {
+  const p = normPath(req.body.path);
+  const content = req.body.content;
+  if (!p || typeof content !== 'string') return res.status(400).json({ error: 'err.badPath' });
+  if (Buffer.byteLength(content, 'utf8') > EDIT_MAX) return res.status(413).json({ error: 'err.tooBig' });
+  try {
+    const st = await fs.promises.stat(p);
+    if (st.isDirectory()) return res.status(400).json({ error: 'err.badPath' });
+    // Someone else (another device, an editor on the PC) touched the file since
+    // it was opened -- refuse rather than overwrite their work.
+    if (Number.isFinite(req.body.mtime) && Math.abs(st.mtimeMs - req.body.mtime) > 1) {
+      return res.status(409).json({ error: 'err.staleFile' });
+    }
+    let text = req.body.crlf ? content.replace(/\n/g, '\r\n') : content;
+    if (req.body.bom) text = '﻿' + text;
+    // Write beside the target and rename over it, so a failure mid-write cannot
+    // leave a half-saved file behind.
+    const tmp = p + '.termbridge-' + crypto.randomBytes(4).toString('hex') + '.tmp';
+    await fs.promises.writeFile(tmp, text, 'utf8');
+    try {
+      await fs.promises.rename(tmp, p);
+    } catch (e) {
+      await fs.promises.rm(tmp, { force: true });
+      throw e;
+    }
+    res.json({ mtime: (await fs.promises.stat(p)).mtimeMs });
+  } catch (e) {
+    res.status(e.code === 'ENOENT' ? 404 : 500).json({ error: e.code === 'ENOENT' ? 'err.notFound' : e.message });
+  }
+});
+
 // ---------------------------------------------------------------- pinned files
 
 const PINS_FILE = path.join(__dirname, 'pins.json');

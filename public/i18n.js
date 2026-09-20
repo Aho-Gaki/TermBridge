@@ -59,6 +59,8 @@
       'ex.hideHidden': '隠し項目を非表示',
       'ex.newDir': '新しいフォルダー',
       'ex.newFile': '新しいファイル',
+      'ex.pasteMove': 'ここへ移動: {name}',
+      'ex.pasteCopy': 'ここへコピー: {name}',
       'ex.closeEsc': '閉じる (Esc)',
       'ex.list': 'ファイル一覧',
       'ex.pins': 'ピン留め',
@@ -82,6 +84,7 @@
       'menu.openCmd': 'コマンド プロンプトをここで開く',
       'menu.runTerm': 'ターミナルで実行',
       'menu.openLink': '開く（リンク先を実行）',
+      'menu.edit': '編集',
       'menu.copy': 'コピー',
       'menu.cut': '切り取り',
       'menu.pasteHere': 'このフォルダーへ貼り付け',
@@ -107,7 +110,6 @@
       'msg.pasted': '貼り付けました',
       'msg.pinned': 'ピン留めしました',
       'msg.ranInTab': 'ターミナルのタブで起動しました',
-      'msg.openUnsupported': 'このファイル形式のオープンには対応していません',
       'msg.noTerm': 'ターミナルがありません',
       'msg.folderUnavailable': 'フォルダーが見つからないため、ターミナルを起動できませんでした',
 
@@ -125,6 +127,16 @@
       'memo.syncing': '同期中…',
       'memo.saved': '保存済み',
 
+      // editor
+      'ed.save': '保存',
+      'ed.saveTitle': '保存 (Ctrl+S)',
+      'ed.close': 'エディターを閉じる',
+      'ed.closeTitle': '閉じる (Esc)',
+      'ed.content': 'ファイルの内容',
+      'ed.saving': '保存中…',
+      'ed.saved': '保存しました',
+      'ed.discard': '{name} の変更は保存されていません。破棄して閉じますか？',
+
       // auth
       'auth.title': 'アクセストークンを入力',
       'auth.placeholder': 'TERMBRIDGE_TOKEN の値',
@@ -134,6 +146,9 @@
       // server-side error codes
       'err.auth': '認証が必要です',
       'err.badPath': '不正なパスです',
+      'err.tooBig': 'ファイルが大きすぎます（512 KB まで）',
+      'err.binary': 'テキストファイルではないため開けません',
+      'err.staleFile': 'このファイルは別の場所で変更されました。開き直してください',
       'err.badName': '不正な名前です',
       'err.exists': '同じ名前が既に存在します',
       'err.notFound': '対象が見つかりません',
@@ -205,6 +220,8 @@
       'ex.hideHidden': 'Hide hidden items',
       'ex.newDir': 'New folder',
       'ex.newFile': 'New file',
+      'ex.pasteMove': 'Move here: {name}',
+      'ex.pasteCopy': 'Copy here: {name}',
       'ex.closeEsc': 'Close (Esc)',
       'ex.list': 'File list',
       'ex.pins': 'Pinned',
@@ -226,6 +243,7 @@
       'menu.openCmd': 'Open in Command Prompt',
       'menu.runTerm': 'Run in terminal',
       'menu.openLink': 'Open (run target)',
+      'menu.edit': 'Edit',
       'menu.copy': 'Copy',
       'menu.cut': 'Cut',
       'menu.pasteHere': 'Paste into this folder',
@@ -250,7 +268,6 @@
       'msg.pasted': 'Pasted',
       'msg.pinned': 'Pinned',
       'msg.ranInTab': 'Started in a terminal tab',
-      'msg.openUnsupported': 'This file type cannot be opened here',
       'msg.noTerm': 'No terminal available',
       'msg.folderUnavailable': 'The terminal could not start because the folder is unavailable',
 
@@ -266,6 +283,15 @@
       'memo.syncing': 'Syncing…',
       'memo.saved': 'Saved',
 
+      'ed.save': 'Save',
+      'ed.saveTitle': 'Save (Ctrl+S)',
+      'ed.close': 'Close editor',
+      'ed.closeTitle': 'Close (Esc)',
+      'ed.content': 'File contents',
+      'ed.saving': 'Saving…',
+      'ed.saved': 'Saved',
+      'ed.discard': '{name} has unsaved changes. Discard them?',
+
       'auth.title': 'Enter access token',
       'auth.placeholder': 'Value of TERMBRIDGE_TOKEN',
       'auth.hint': 'Press Enter to connect',
@@ -273,6 +299,9 @@
 
       'err.auth': 'Authentication required',
       'err.badPath': 'Invalid path',
+      'err.tooBig': 'File is too large (512 KB limit)',
+      'err.binary': 'Not a text file, so it cannot be opened here',
+      'err.staleFile': 'This file changed elsewhere. Reopen it and try again',
       'err.badName': 'Invalid name',
       'err.exists': 'An item with that name already exists',
       'err.notFound': 'Target not found',

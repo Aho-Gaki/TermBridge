@@ -133,6 +133,9 @@
       <button id="exBtnNewFile" class="icon-btn" data-i18n-title="ex.newFile" title="新しいファイル">
         <svg viewBox="0 0 16 16"><path d="M4 1.5h5.5L12.5 5v9.5h-8.5z" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"/><path d="M8.2 7.5v4M6.2 9.5h4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
       </button>
+      <button id="exBtnPaste" class="icon-btn" hidden>
+        <svg viewBox="0 0 16 16"><path d="M6 2.5h4v2H6zM5.5 3.5H4a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-9a1 1 0 0 0-1-1h-1.5" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"/></svg>
+      </button>
       <span class="action-sep"></span>
       <button id="exBtnClose" class="icon-btn" data-i18n-title="ex.closeEsc" title="閉じる (Esc)">
         <svg viewBox="0 0 16 16"><path d="M4.5 4.5l7 7m0-7l-7 7" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>
@@ -183,6 +186,18 @@
       </button>
     </div>
     <textarea id="memoText" data-i18n-ph="memo.placeholder" placeholder="コマンドや作業メモをここに。全端末でリアルタイム同期されます。" spellcheck="false"></textarea>
+  </div>
+
+  <div id="edPanel" class="ed-panel" hidden>
+    <div class="ed-head">
+      <span id="edName" class="ed-name"></span>
+      <span id="edState" class="ed-state"></span>
+      <button id="edSave" class="ed-save" disabled data-i18n-title="ed.saveTitle" title="保存 (Ctrl+S)" data-i18n="ed.save">保存</button>
+      <button id="edClose" class="icon-btn" data-i18n-title="ed.closeTitle" data-i18n-aria="ed.close" title="閉じる (Esc)" aria-label="エディターを閉じる">
+        <svg viewBox="0 0 16 16"><path d="M4.5 4.5l7 7m0-7l-7 7" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+    <textarea id="edText" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" data-i18n-aria="ed.content" aria-label="ファイルの内容" wrap="off"></textarea>
   </div>
 
   <div id="menu" class="menu" hidden></div>

@@ -71,7 +71,7 @@ running.
 - **Browse every drive** with back, forward, up, and refresh
 - **Show hidden items** with a toggle
 - **Create** new folders and files; **rename**; **delete to the Recycle Bin** rather than permanently
-- **Copy, cut, and paste**, including pasting straight into a folder you right-clicked
+- **Copy, cut, and paste**, including pasting straight into a folder you right-clicked. While something is on the clipboard a paste button appears in the toolbar, so a move still lands on a phone where a full listing leaves no blank strip to long-press
 - **Open Command Prompt or PowerShell in any folder** from its right-click menu on PC or long-press menu on mobile
 - **Copy path** to the clipboard, already quoted for pasting into a shell
 - **Run `.bat` and `.cmd` files** — double-click (or tap) and it opens as a terminal tab
@@ -79,6 +79,15 @@ running.
 - **Windows shortcuts behave like shortcuts** — a `.lnk` pointing at a folder opens that folder, and one pointing at a `.bat` runs it with the arguments and working directory stored in the shortcut. Together with pins, a folder of shortcuts becomes a launcher you can build and use entirely from your phone
 - **`start` lines become tabs** — a `start` command inside a `.bat` will *not* open a window on the PC's screen. Each one becomes a new web tab instead, and URLs turn into notifications you can open on the phone you are actually holding
 - **Pins** — pin folders, `.bat` files, or shortcuts to the bottom of the explorer. Pins are shared across every device, and pinned items launch straight from there
+
+### Simple editor
+
+- **Tap a text file to open and edit it in place** — a plain text area your phone keyboard already knows how to drive
+- **Saving is explicit** (`Ctrl`+`S` or the save button); a ● beside the filename marks unsaved changes
+- **Line endings and the BOM survive the round trip** — a CRLF file is saved back as CRLF
+- **A save is refused when the file changed elsewhere while it was open**, so an edit from another device or from the PC is never silently overwritten
+- Text files only, up to 512 KB; binaries are refused rather than mangled
+- Unlike the memo it is **not shared** — each device opens its own copy and only a save touches the disk
 
 ### Memo
 

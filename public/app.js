@@ -77,10 +77,13 @@
     menu: $('menu'), authOverlay: $('authOverlay'), authInput: $('authInput'),
     memoToggle: $('memoToggle'), memoPanel: $('memoPanel'),
     memoClose: $('memoClose'), memoText: $('memoText'), memoState: $('memoState'),
+    edPanel: $('edPanel'), edName: $('edName'), edState: $('edState'),
+    edSave: $('edSave'), edClose: $('edClose'), edText: $('edText'),
     fileToggle: $('fileToggle'), exPanel: $('exPanel'),
     exBtnBack: $('exBtnBack'), exBtnFwd: $('exBtnFwd'), exBtnUp: $('exBtnUp'),
     exAddr: $('exAddr'), exBtnRefresh: $('exBtnRefresh'), exBtnHidden: $('exBtnHidden'),
-    exBtnNewDir: $('exBtnNewDir'), exBtnNewFile: $('exBtnNewFile'), exBtnClose: $('exBtnClose'),
+    exBtnNewDir: $('exBtnNewDir'), exBtnNewFile: $('exBtnNewFile'),
+    exBtnPaste: $('exBtnPaste'), exBtnClose: $('exBtnClose'),
     exList: $('exList'), exCount: $('exCount'), exMsg: $('exMsg'), exPins: $('exPins'),
     exCols: [...document.querySelectorAll('.ex-cols button')],
     setBtn: $('setBtn'), wpInput: $('wpInput'), toast: $('toast'),
@@ -1873,13 +1876,15 @@
   }
 
   el.navTabs.addEventListener('click', () => {
+    if (!edClose()) return;
     if (el.tabSheet.hidden) openSheet(); else closeSheet();
   });
   el.tabSheet.querySelector('.sheet-backdrop').addEventListener('click', closeSheet);
-  el.navFiles.addEventListener('click', () => setExOpen(el.exPanel.hidden));
-  el.navMemo.addEventListener('click', () => setMemoOpen(el.memoPanel.hidden));
+  el.navFiles.addEventListener('click', () => { if (edClose()) setExOpen(el.exPanel.hidden); });
+  el.navMemo.addEventListener('click', () => { if (edClose()) setMemoOpen(el.memoPanel.hidden); });
   function syncMobilePanelBackdrop() {
-    const open = !el.exPanel.hidden || !el.memoPanel.hidden || !el.tabSheet.hidden;
+    const open = !el.exPanel.hidden || !el.memoPanel.hidden || !el.tabSheet.hidden
+      || !el.edPanel.hidden;
     el.panelBackdrop.hidden = !mqMobile.matches || !open;
   }
 
@@ -2008,6 +2013,14 @@
     el.exBtnBack.disabled = exStack.back.length === 0;
     el.exBtnFwd.disabled = exStack.fwd.length === 0;
     el.exBtnUp.disabled = exCur === '';
+    // Moving a file means cut here, paste there. On a phone the list is often
+    // full, leaving no blank strip to long-press, so the destination folder
+    // needs a paste control that is always reachable.
+    el.exBtnPaste.hidden = !exClip || !exCur;
+    if (exClip) {
+      el.exBtnPaste.title = i18n.t(exClip.op === 'cut' ? 'ex.pasteMove' : 'ex.pasteCopy', { name: exClip.name });
+      el.exBtnPaste.setAttribute('aria-label', el.exBtnPaste.title);
+    }
     for (const b of el.exCols) {
       b.classList.toggle('asc', exSort.key === b.dataset.key && exSort.asc);
       b.classList.toggle('desc', exSort.key === b.dataset.key && !exSort.asc);
@@ -2047,12 +2060,12 @@
         run.addEventListener('dblclick', (ev) => ev.stopPropagation());
         row.appendChild(run);
       }
-      // On phones, folders still open with one tap, but executable shortcuts
-      // require the same deliberate double-click as they do on a PC.
+      // On phones, folders and text files open with one tap, but executables
+      // and shortcuts require the same deliberate double-click as on a PC.
       row.addEventListener('click', () => {
         if (row.dataset.lp) return; // a long-press menu was just shown
         exSelect(e.name);
-        if (mqMobile.matches && e.dir) exOpen(e);
+        if (mqMobile.matches && !isRunnable(e.name) && !isLnk(e.name)) exOpen(e);
       });
       row.addEventListener('dblclick', () => {
         if (!mqMobile.matches || isRunnable(e.name) || isLnk(e.name)) exOpen(e);
@@ -2084,7 +2097,7 @@
     const full = exJoin(exCur, e.name);
     if (e.dir) exLoad(full);
     else if (isRunnable(e.name) || isLnk(e.name)) exRunBat(full);
-    else exShowMsg(i18n.t('msg.openUnsupported'));
+    else edOpen(full);
   }
 
   let lastRunAt = 0;
@@ -2205,6 +2218,7 @@
     else if (isRunnable(e.name)) items.push({ icon: exIcons.bat, label: i18n.t('menu.runTerm'), action: () => exOpen(e) });
     else if (isLnk(e.name)) items.push({ icon: exIcons.lnk, label: i18n.t('menu.openLink'), action: () => exOpen(e) });
     if (!e.drive) {
+      if (!e.dir) items.push({ label: i18n.t('menu.edit'), action: () => edOpen(full) });
       items.push({ label: i18n.t('menu.copy'), action: () => exClipSet('copy') });
       items.push({ label: i18n.t('menu.cut'), action: () => exClipSet('cut') });
       if (exClip && e.dir) items.push({ label: i18n.t('menu.pasteHere'), action: () => exPaste(exJoin(exCur, e.name)) });
@@ -2380,6 +2394,7 @@
   });
   el.exBtnNewDir.addEventListener('click', () => exCreate('dir'));
   el.exBtnNewFile.addEventListener('click', () => exCreate('file'));
+  el.exBtnPaste.addEventListener('click', () => exPaste());
   el.exBtnBack.addEventListener('click', () => {
     if (exStack.back.length) { exStack.fwd.push(exCur); exLoad(exStack.back.pop(), { push: false }); }
   });
@@ -2484,6 +2499,104 @@
   });
 
   if (localStorage.getItem('termbridge.memoOpen') === '1') setMemoOpen(true);
+
+  // ---------------------------------------------------------------- editor
+
+  // A deliberately plain textarea over one file, opened from the explorer.
+  // Unlike the memo it is NOT shared: every device edits its own copy, and the
+  // server refuses a save when the file changed underneath it.
+
+  let edFile = null;   // { path, name, bom, crlf, mtime } while a file is open
+  let edDirty = false;
+  let edStateTimer = null;
+
+  function edSetState(text, isError) {
+    el.edState.textContent = text || '';
+    el.edState.classList.toggle('error', !!isError);
+    clearTimeout(edStateTimer);
+    if (text && !isError) edStateTimer = setTimeout(() => { el.edState.textContent = ''; }, 2500);
+  }
+
+  function edSetDirty(on) {
+    edDirty = on;
+    el.edPanel.classList.toggle('dirty', on);
+    el.edSave.disabled = !on;
+  }
+
+  async function edOpen(full) {
+    if (!edClose()) return;
+    try {
+      const r = await fsApi('GET', '/api/fs/read?path=' + encodeURIComponent(full));
+      edFile = { path: r.path, name: r.name, bom: r.bom, crlf: r.crlf, mtime: r.mtime };
+      el.edName.textContent = r.name;
+      el.edName.title = r.path;
+      el.edText.value = r.content;
+      edSetDirty(false);
+      edSetState('');
+      el.edPanel.hidden = false;
+      syncMobilePanelBackdrop();
+      if (!isTouch) el.edText.focus();
+    } catch (e) {
+      exShowMsg(e.message, true);
+    }
+  }
+
+  // Returns false when the user backs out of discarding unsaved edits, so
+  // callers that were about to navigate elsewhere can stay where they are.
+  function edClose() {
+    if (el.edPanel.hidden) return true;
+    if (edDirty && !confirm(i18n.t('ed.discard', { name: edFile ? edFile.name : '' }))) return false;
+    el.edPanel.hidden = true;
+    el.edText.value = '';
+    edFile = null;
+    edSetDirty(false);
+    edSetState('');
+    syncMobilePanelBackdrop();
+    return true;
+  }
+
+  async function edSave() {
+    if (!edFile || !edDirty) return;
+    el.edSave.disabled = true;
+    edSetState(i18n.t('ed.saving'));
+    const body = {
+      path: edFile.path,
+      content: el.edText.value,
+      bom: edFile.bom,
+      crlf: edFile.crlf,
+      mtime: edFile.mtime,
+    };
+    try {
+      const r = await fsApi('POST', '/api/fs/write', body);
+      edFile.mtime = r.mtime;
+      edSetDirty(false);
+      edSetState(i18n.t('ed.saved'));
+      if (!el.exPanel.hidden && exCur) exLoad(exCur, { push: false });
+    } catch (e) {
+      edSetState(e.message, true);
+      el.edSave.disabled = false;
+    }
+  }
+
+  el.edSave.addEventListener('click', () => edSave());
+  el.edClose.addEventListener('click', () => edClose());
+  el.edText.addEventListener('input', () => { if (!edDirty) edSetDirty(true); });
+
+  el.edText.addEventListener('keydown', (e) => {
+    e.stopPropagation();  // an edit must never reach the terminal shortcuts
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === 's') {
+      e.preventDefault();
+      edSave();
+    } else if (e.key === 'Escape') {
+      edClose();
+    }
+  });
+
+  window.addEventListener('beforeunload', (e) => {
+    if (!edDirty) return;
+    e.preventDefault();
+    e.returnValue = '';
+  });
 
   // ---------------------------------------------------------------- auth
 

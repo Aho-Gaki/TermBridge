@@ -748,6 +748,97 @@ html.wp .ex-panel {
 }
 #memoText::placeholder { color: #6e6e6e; }
 
+/* ---------------------------------------------------------------- editor panel */
+
+/* A plain textarea over the file, opened from the explorer. It sits above the
+   explorer because that is where it is launched from, and keeps its close
+   button on phones -- unlike the file and memo panels, the navigation strip
+   has no button of its own to dismiss it. */
+.ed-panel {
+  position: absolute;
+  top: calc(var(--header-h) + env(safe-area-inset-top, 0px) + 8px);
+  right: calc(8px + env(safe-area-inset-right, 0px));
+  bottom: calc(var(--status-h) + 8px + env(safe-area-inset-bottom, 0px));
+  width: min(760px, calc(100% - 16px));
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-widget);
+  border: 1px solid var(--border-widget);
+  border-radius: 8px;
+  box-shadow: 0 6px 24px var(--shadow);
+  z-index: 46;
+  overflow: hidden;
+}
+.ed-panel[hidden] { display: none; }
+
+html.wp .ed-panel {
+  background-color: var(--bg);
+  background-image: var(--wallpaper-layer);
+  background-size: cover;
+  background-position: center;
+}
+
+.ed-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  flex: none;
+  padding: 0 4px 0 10px;
+  border-bottom: 1px solid var(--border);
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.ed-name {
+  font-size: 12px;
+  color: var(--fg);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* The dot marks unsaved edits, the same cue the tab strip uses. */
+.ed-panel.dirty .ed-name::after {
+  content: '●';
+  margin-left: 6px;
+  font-size: 10px;
+  color: var(--fg-dim);
+}
+.ed-state { flex: 1 1 auto; text-align: right; font-size: 11px; color: #6e6e6e; }
+.ed-state.error { color: #f48771; }
+
+.ed-save {
+  flex: none;
+  height: 24px;
+  padding: 0 12px;
+  border: 1px solid var(--border-widget);
+  border-radius: 4px;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #ffffff;
+  font-size: 12px;
+  cursor: pointer;
+}
+.ed-save:hover:not(:disabled) { background: var(--accent-hover); }
+.ed-save:disabled { opacity: 0.45; cursor: default; }
+
+#edText {
+  flex: 1 1 auto;
+  resize: none;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--fg);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.5;
+  padding: 8px 10px;
+  white-space: pre;
+  overflow: auto;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
 /* ---------------------------------------------------------------- explorer panel */
 
 .ex-panel {
@@ -942,7 +1033,8 @@ html.wp .ex-panel {
    control used to close the current panel. */
 @media (max-width: 760px) {
   .memo-panel,
-  .ex-panel {
+  .ex-panel,
+  .ed-panel {
     top: 0;
     right: 0;
     bottom: var(--mobile-nav-h);
@@ -951,7 +1043,8 @@ html.wp .ex-panel {
     height: auto;
   }
   html.wp .memo-panel,
-  html.wp .ex-panel {
+  html.wp .ex-panel,
+  html.wp .ed-panel {
     background-color: transparent;
     background-image: none;
   }
