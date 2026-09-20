@@ -679,6 +679,24 @@ kbd {
 
 /* ---------------------------------------------------------------- memo panel */
 
+/* Home-screen launch: iOS hands the app the whole screen and draws the clock
+   on top of it. Whatever happened to be under that strip showed through a
+   translucent overlay and came out washed out, so paint it solid instead --
+   the clock then sits on a bar, the way it does in a native app. The inset
+   is zero in a browser tab, which collapses this to nothing.
+   Always dark: black-translucent draws the clock in white. */
+body::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: env(safe-area-inset-top, 0px);
+  background: #000;
+  z-index: 100;
+  pointer-events: none;
+}
+
 #app { position: relative; }
 
 #panelBackdrop {
