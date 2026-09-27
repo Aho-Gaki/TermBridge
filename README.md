@@ -278,6 +278,7 @@ it. Open the address it prints. To pin a port, set `httpsPort` in `config.json`.
 |---|---|
 | Threat model, hardening, reporting issues | [SECURITY.md](SECURITY.md) |
 | Contributing and project scope | [CONTRIBUTING.md](CONTRIBUTING.md) |
+| What changed between versions | [CHANGELOG.md](CHANGELOG.md) |
 | 日本語版 README | [README.ja.md](README.ja.md) |
 
 ## Project layout

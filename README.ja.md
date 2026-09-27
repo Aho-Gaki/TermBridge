@@ -272,6 +272,7 @@ Tailscale がインストール済みで、起動・サインインしている�
 |---|---|
 | 脅威モデル・安全な設定・報告 | [SECURITY.md](SECURITY.md) |
 | コントリビューションと方針 | [CONTRIBUTING.md](CONTRIBUTING.md) |
+| バージョンごとの変更点 | [CHANGELOG.md](CHANGELOG.md) |
 | English README | [README.md](README.md) |
 
 ## 構成
