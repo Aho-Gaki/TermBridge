@@ -15,5 +15,6 @@ config.json
 .vscode/
 .idea/
 .claude/
+.router/
 Thumbs.db
 desktop.ini
