@@ -45,8 +45,8 @@ Notable changes to TermBridge, newest first.
 
 ### Security
 
-- `express` 4.22.2 and `body-parser` 1.20.6, clearing two moderate `qs` advisories
-  ([GHSA-x5fp-wj9c-mxmx](https://github.com/advisories/GHSA-x5fp-wj9c-mxmx),
+- `express` 4.22.3, `body-parser` 1.20.8, and `qs` 6.16.0, clearing two moderate `qs`
+  advisories ([GHSA-x5fp-wj9c-mxmx](https://github.com/advisories/GHSA-x5fp-wj9c-mxmx),
   [GHSA-4mjr-xmp4-gh2g](https://github.com/advisories/GHSA-4mjr-xmp4-gh2g))
 
 ## v1.0.0 — 2026-08-06
