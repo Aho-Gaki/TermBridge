@@ -40,7 +40,7 @@ running.
 ### Terminal
 
 - **PowerShell, cmd, and Git Bash**, auto-detected at startup — pick the shell per tab
-- **Up to 24 tabs.** Rename by double-clicking, reorder by dragging, force-kill from the tab or the header. When they outgrow the header, scroll them with the mouse wheel or a swipe
+- **Up to 24 tabs.** Rename by double-clicking or from the tab's right-click menu (the ✎ button in the phone's tab list), reorder by dragging, force-kill from the tab or the header. When they outgrow the header, scroll them with the mouse wheel or a swipe
 - **WebGL rendering** with Unicode 11 width handling, so CJK text and emoji line up correctly
 - **Clickable links** — URLs printed by a command open in a new browser tab
 - **Copy** by selecting and pressing `Ctrl+C`, or by right-clicking a selection — the same behavior as Windows Terminal

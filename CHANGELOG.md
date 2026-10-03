@@ -17,6 +17,8 @@ Notable changes to TermBridge, newest first.
 - **Select several files and folders at once** and cut, copy, or delete them together —
   `Ctrl`+click, `Shift`+click, and `Ctrl`+`A` on PC, **Select multiple** from the long-press
   menu on a phone. Items that cannot move stay on the clipboard to try again
+- **Rename a terminal from a phone** with the ✎ button in the tab list, and on PC from the
+  tab's right-click menu as well as by double-clicking
 - **Cancel a cut or copy** — `Esc`, or **Cancel cut** in the menu of an item on the clipboard
   to take just that one off
 - **Open a shell in the folder you are looking at**, straight from the explorer
@@ -51,6 +53,7 @@ Notable changes to TermBridge, newest first.
   strip sideways, and a tab that becomes active scrolls into view
 - The explorer's paste button no longer shows with nothing on the clipboard
 - The connected-device count in the status bar follows a language switch
+- The Enter that confirms Japanese IME conversion no longer ends a tab rename halfway
 - A command retitling its tab no longer rebuilds the whole strip, which cut short a tab
   rename in progress
 

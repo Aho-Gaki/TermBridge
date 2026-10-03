@@ -548,6 +548,8 @@ kbd {
 }
 .sheet-close:active { background: var(--toolbar-hover); color: #fff; }
 .sheet-close svg { width: 15px; height: 15px; }
+/* 16px keeps iOS from zooming the page when the field takes focus */
+.sheet-row .tab-rename { font-size: 16px; padding: 6px 8px; border-radius: 4px; }
 
 .sheet-move {
   display: flex;
