@@ -348,7 +348,7 @@
       title = title.trim();
       if (title !== t.autoTitle) {
         t.autoTitle = title;
-        renderTabs();
+        relabelTab(t);
       }
     });
     terms.set(info.id, t);
@@ -626,6 +626,16 @@
     });
   }
 
+  // A mouse wheel only scrolls vertically and the strip hides its scrollbar,
+  // so without this the tabs past its right edge could not be reached with a
+  // mouse at all. Sideways input from a touchpad is left to the browser.
+  el.tabStrip.addEventListener('wheel', (ev) => {
+    const s = el.tabStrip;
+    if (ev.ctrlKey || Math.abs(ev.deltaX) >= Math.abs(ev.deltaY) || s.scrollWidth <= s.clientWidth) return;
+    ev.preventDefault();
+    s.scrollLeft += ev.deltaMode === 1 ? ev.deltaY * 16 : ev.deltaY;
+  }, { passive: false });
+
   function setOrder(ids) {
     const next = new Map();
     for (const id of ids) if (terms.has(id)) next.set(id, terms.get(id));
@@ -644,7 +654,12 @@
     refreshUi();
   }
 
+  // Rebuilding the strip must not move it: it keeps where it was scrolled
+  // to, and only scrolls by itself to bring a newly active tab into view.
+  let stripShownActive = null;
+
   function renderTabs() {
+    const stripScroll = el.tabStrip.scrollLeft;
     el.tabStrip.textContent = '';
 
     for (const t of terms.values()) {
@@ -677,9 +692,35 @@
       el.tabStrip.appendChild(chip);
       attachReorder(chip, chip, 'x');
     }
+    el.tabStrip.scrollLeft = stripScroll;
+    if (activeId !== stripShownActive) {
+      stripShownActive = activeId;
+      const chip = [...el.tabStrip.children].find((c) => c.dataset.id === activeId);
+      if (chip) {
+        const sr = el.tabStrip.getBoundingClientRect();
+        const cr = chip.getBoundingClientRect();
+        if (cr.left < sr.left) el.tabStrip.scrollLeft -= sr.left - cr.left;
+        else if (cr.right > sr.right) el.tabStrip.scrollLeft += cr.right - sr.right;
+      }
+    }
     el.navCount.textContent = String(terms.size);
     el.navCount.dataset.zero = terms.size ? '' : '1';
     if (!el.tabSheet.hidden) renderSheet();
+  }
+
+  /** Running a command retitles its tab, in any tab and at any moment.
+      Rebuilding the strip for that would swap out the tab under a finger
+      mid-tap and throw away a rename someone is typing, so only the text
+      changes. */
+  function relabelTab(t) {
+    const chip = [...el.tabStrip.children].find((c) => c.dataset.id === t.id);
+    if (!chip || dragActive) return renderTabs();
+    const label = chip.querySelector('.tab-label');
+    if (label) label.textContent = displayName(t); // absent while renaming
+    chip.title = t.autoTitle || t.name;
+    const row = [...el.sheetTabs.children].find((r) => r.dataset.id === t.id);
+    const nm = row && row.querySelector('.sheet-name');
+    if (nm) nm.textContent = displayName(t);
   }
 
   function escapeHtml(s) {
