@@ -42,6 +42,10 @@ Notable changes to TermBridge, newest first.
 ### Fixed
 
 - Backspace on a phone no longer acts on a stale line
+- Tabs past the right edge of the header can be reached with a mouse: the wheel scrolls the
+  strip sideways, and a tab that becomes active scrolls into view
+- A command retitling its tab no longer rebuilds the whole strip, which cut short a tab
+  rename in progress
 
 ### Security
 
