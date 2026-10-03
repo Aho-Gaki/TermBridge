@@ -274,6 +274,7 @@
   }
 
   const closeIcon = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 4.5l7 7m0-7l-7 7" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>';
+  const pencilIcon = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10.5 2.5l3 3L6 13H3v-3z" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"/></svg>';
   const gripIcon = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 5h11M2.5 8h11M2.5 11h11" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>';
   const deskIcon = '<svg class="presence-icon" viewBox="0 0 16 16" aria-hidden="true"><rect x="1.5" y="3" width="13" height="8.5" rx="1" fill="none" stroke="currentColor" stroke-width="1.1"/><path d="M5.5 13.5h5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>';
   const mobIcon = '<svg class="presence-icon" viewBox="0 0 16 16" aria-hidden="true"><rect x="4.5" y="1.5" width="7" height="13" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.1"/><path d="M7 12.5h2" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>';
@@ -733,6 +734,14 @@
         activate(t.id, { focus: true });
       });
       chip.addEventListener('dblclick', (e) => { e.preventDefault(); startRename(t, label); });
+      // double-click is easy to miss, so the tab's own menu offers it too
+      chip.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        showMenuItems([
+          { label: i18n.t('menu.rename'), action: () => startRename(t, label) },
+          { label: i18n.t('hdr.kill'), action: () => send({ type: 'kill', id: t.id }) },
+        ], { x: e.clientX, y: e.clientY });
+      });
       chip.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); activate(t.id, { focus: true }); }
       });
@@ -792,11 +801,13 @@
     };
     input.addEventListener('keydown', (e) => {
       e.stopPropagation();
+      if (e.isComposing || e.keyCode === 229) return; // Enter that confirms IME conversion
       if (e.key === 'Enter') commit();
       if (e.key === 'Escape') { done = true; renderTabs(); }
     });
     input.addEventListener('blur', commit);
     input.addEventListener('click', (e) => e.stopPropagation());
+    input.addEventListener('pointerdown', (e) => e.stopPropagation());
   }
 
   function renderPresence(list) {
@@ -1961,6 +1972,12 @@
       nm.className = 'sheet-name';
       nm.textContent = displayName(t);
       row.appendChild(nm);
+      const rn = document.createElement('button');
+      rn.className = 'sheet-close sheet-rename';
+      rn.title = i18n.t('menu.rename');
+      rn.setAttribute('aria-label', i18n.t('menu.rename'));
+      rn.innerHTML = pencilIcon;
+      row.appendChild(rn);
       const cl = document.createElement('button');
       cl.className = 'sheet-close';
       cl.title = i18n.t('hdr.kill');
@@ -1978,6 +1995,7 @@
         closeSheet();
       });
       cl.addEventListener('click', (ev) => { ev.stopPropagation(); send({ type: 'kill', id: t.id }); });
+      rn.addEventListener('click', (ev) => { ev.stopPropagation(); startRename(t, nm); });
       grip.addEventListener('click', (ev) => ev.stopPropagation());
       el.sheetTabs.appendChild(row);
       attachReorder(row, grip, 'y');
