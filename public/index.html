@@ -150,6 +150,16 @@
         <svg viewBox="0 0 16 16"><path d="M4.5 4.5l7 7m0-7l-7 7" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>
       </button>
     </div>
+    <div id="exSelBar" class="ex-selbar" hidden>
+      <span id="exSelCount"></span>
+      <button id="exSelAll" type="button" data-i18n="ex.selAll">すべて選択</button>
+      <button id="exSelCut" type="button" data-i18n="menu.cut">切り取り</button>
+      <button id="exSelCopy" type="button" data-i18n="menu.copy">コピー</button>
+      <button id="exSelDelete" type="button" data-i18n="ex.selDelete">削除</button>
+      <button id="exSelDone" type="button" class="icon-btn" data-i18n-title="ex.selDone" data-i18n-aria="ex.selDone" title="選択を解除" aria-label="選択を解除">
+        <svg viewBox="0 0 16 16"><path d="M4.5 4.5l7 7m0-7l-7 7" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>
+      </button>
+    </div>
     <div class="ex-cols">
       <button data-key="name" class="ex-cell-name" data-i18n="ex.colName">名前</button>
       <button data-key="mtime" class="ex-cell-mtime" data-i18n="ex.colMtime">更新日時</button>
