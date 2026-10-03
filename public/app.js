@@ -628,6 +628,50 @@
     });
   }
 
+  // Scrolls the strip by easing toward a goal, so a wheel's 100px notches
+  // glide instead of jumping. Further notches move the goal while it glides.
+  const mqReduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
+  let stripGoal = null;
+  let stripRaf = 0;
+  let stripLast = 0;
+
+  function stripScrollTo(x) {
+    const s = el.tabStrip;
+    stripGoal = Math.max(0, Math.min(s.scrollWidth - s.clientWidth, x));
+    if (mqReduceMotion.matches) {
+      s.scrollLeft = stripGoal;
+      stripGoal = null;
+      return;
+    }
+    if (!stripRaf) {
+      stripLast = performance.now();
+      stripRaf = requestAnimationFrame(stripStep);
+    }
+  }
+
+  function stripStop() {
+    cancelAnimationFrame(stripRaf);
+    stripRaf = 0;
+    stripGoal = null;
+  }
+
+  function stripStep(now) {
+    const s = el.tabStrip;
+    const d = stripGoal - s.scrollLeft;
+    if (Math.abs(d) < 1) {
+      s.scrollLeft = stripGoal;
+      stripRaf = 0;
+      stripGoal = null;
+      return;
+    }
+    // close a fixed share of the gap per 1/60 s, whatever the refresh rate
+    const k = 1 - Math.pow(0.78, Math.min(4, (now - stripLast) / 16.7));
+    stripLast = now;
+    const step = d * k;
+    s.scrollLeft += Math.abs(step) < 1 ? Math.sign(d) : step;
+    stripRaf = requestAnimationFrame(stripStep);
+  }
+
   // A mouse wheel only scrolls vertically and the strip hides its scrollbar,
   // so without this the tabs past its right edge could not be reached with a
   // mouse at all. Sideways input from a touchpad is left to the browser.
@@ -635,8 +679,10 @@
     const s = el.tabStrip;
     if (ev.ctrlKey || Math.abs(ev.deltaX) >= Math.abs(ev.deltaY) || s.scrollWidth <= s.clientWidth) return;
     ev.preventDefault();
-    s.scrollLeft += ev.deltaMode === 1 ? ev.deltaY * 16 : ev.deltaY;
+    stripScrollTo((stripGoal ?? s.scrollLeft) + (ev.deltaMode === 1 ? ev.deltaY * 16 : ev.deltaY));
   }, { passive: false });
+  // a finger on the strip takes over from any glide still running
+  el.tabStrip.addEventListener('pointerdown', stripStop);
 
   function setOrder(ids) {
     const next = new Map();
@@ -701,8 +747,8 @@
       if (chip) {
         const sr = el.tabStrip.getBoundingClientRect();
         const cr = chip.getBoundingClientRect();
-        if (cr.left < sr.left) el.tabStrip.scrollLeft -= sr.left - cr.left;
-        else if (cr.right > sr.right) el.tabStrip.scrollLeft += cr.right - sr.right;
+        if (cr.left < sr.left) stripScrollTo(el.tabStrip.scrollLeft - (sr.left - cr.left));
+        else if (cr.right > sr.right) stripScrollTo(el.tabStrip.scrollLeft + (cr.right - sr.right));
       }
     }
     el.navCount.textContent = String(terms.size);
@@ -2408,6 +2454,26 @@
     renderEx();
   }
 
+  // Takes items off the clipboard, as Esc does in Explorer: the named ones
+  // from the open folder, or everything when no names are given.
+  function exClipDrop(names) {
+    if (!exClip) return;
+    const op = exClip.op;
+    const left = names && exClip.dir === exCur ? exClip.names.filter((n) => !names.includes(n)) : [];
+    if (names && left.length === exClip.names.length) return;
+    exClip = left.length ? { ...exClip, names: left } : null;
+    exShowMsg(i18n.t(op === 'cut' ? 'msg.uncut' : 'msg.uncopy'));
+    renderEx();
+  }
+
+  function exClipHas(names) {
+    return !!exClip && exClip.dir === exCur && names.some((n) => exClip.names.includes(n));
+  }
+
+  function exClipDropItem(names) {
+    return { label: i18n.t(exClip.op === 'cut' ? 'menu.uncut' : 'menu.uncopy'), action: () => exClipDrop(names) };
+  }
+
   async function exPaste(destDir) {
     const dest = destDir || exCur;
     if (!exClip || !dest || exBusy) return;
@@ -2434,6 +2500,8 @@
     if (exPicked.size > 1) {
       items.push({ label: i18n.t('menu.cut'), action: () => exClipSet('cut') });
       items.push({ label: i18n.t('menu.copy'), action: () => exClipSet('copy') });
+      const picked = [...exPicked];
+      if (exClipHas(picked)) items.push(exClipDropItem(picked));
       items.push({ label: i18n.t('menu.copyPath'), action: () => exCopyPath() });
       items.push({ label: i18n.t('menu.delete'), action: () => exDelete() });
       items.push({ label: i18n.t('ex.selAll'), action: () => exPickAll() });
@@ -2451,6 +2519,7 @@
       if (!e.dir) items.push({ label: i18n.t('menu.edit'), action: () => edOpen(full) });
       items.push({ label: i18n.t('menu.copy'), action: () => exClipSet('copy') });
       items.push({ label: i18n.t('menu.cut'), action: () => exClipSet('cut') });
+      if (exClipHas([e.name])) items.push(exClipDropItem([e.name]));
       if (exClip && e.dir) items.push({ label: i18n.t('menu.pasteHere'), action: () => exPaste(exJoin(exCur, e.name)) });
       items.push(pinnedHas(full)
         ? { label: i18n.t('menu.unpin'), action: () => exUnpin(full) }
@@ -2559,6 +2628,7 @@
       items.push({ label: i18n.t('menu.newFile'), action: () => exCreate('file') });
       items.push({ label: i18n.t('menu.copyCurPath'), action: () => exCopyCurPath() });
       if (exClip) items.push({ label: i18n.t('menu.paste'), action: () => exPaste() });
+      if (exClip) items.push(exClipDropItem(null));
       if (exEntries.length) items.push({ label: i18n.t('ex.selAll'), action: () => exPickAll() });
     }
     items.push({ label: i18n.t('menu.refresh'), action: () => exRefreshList() });
@@ -2693,6 +2763,7 @@
     else if (ev.key === 'Backspace') el.exBtnUp.click();
     else if (ev.key === 'Escape') {
       if (exPickMode || exPicked.size > 1) exEndPick();
+      else if (exClip) exClipDrop(null);
       else setExOpen(false);
     }
     else if (ev.ctrlKey && ev.key.toLowerCase() === 'a') {
@@ -2872,6 +2943,7 @@
     if (!el.setSheet.hidden) renderSetSheet(settingsItems(el.navSet, true));
     renderPins();
     setConn(lastConn.state, lastConn);
+    renderPresence(peers);
     if (!el.exPanel.hidden) renderEx();
   });
 })();
