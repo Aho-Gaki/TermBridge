@@ -17,6 +17,8 @@ Notable changes to TermBridge, newest first.
 - **Select several files and folders at once** and cut, copy, or delete them together —
   `Ctrl`+click, `Shift`+click, and `Ctrl`+`A` on PC, **Select multiple** from the long-press
   menu on a phone. Items that cannot move stay on the clipboard to try again
+- **Cancel a cut or copy** — `Esc`, or **Cancel cut** in the menu of an item on the clipboard
+  to take just that one off
 - **Open a shell in the folder you are looking at**, straight from the explorer
 - **The command line is edited with the phone's own keyboard** — tap anywhere on it to put
   the cursor there, then insert, delete, and convert text as in any text field, IME
@@ -45,8 +47,10 @@ Notable changes to TermBridge, newest first.
 ### Fixed
 
 - Backspace on a phone no longer acts on a stale line
-- Tabs past the right edge of the header can be reached with a mouse: the wheel scrolls the
+- Tabs past the right edge of the header can be reached with a mouse: the wheel glides the
   strip sideways, and a tab that becomes active scrolls into view
+- The explorer's paste button no longer shows with nothing on the clipboard
+- The connected-device count in the status bar follows a language switch
 - A command retitling its tab no longer rebuilds the whole strip, which cut short a tab
   rename in progress
 

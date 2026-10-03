@@ -138,6 +138,8 @@ html.wp #main, html.wp #termArea {
   color: var(--fg);
 }
 
+/* display: flex above would otherwise beat the hidden attribute */
+.icon-btn[hidden] { display: none; }
 .icon-btn.narrow { width: 16px; margin-left: -4px; }
 .icon-btn:hover { background: var(--toolbar-hover); }
 .icon-btn .ex-eye-open { display: none; }
