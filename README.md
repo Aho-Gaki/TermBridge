@@ -72,6 +72,7 @@ running.
 - **Show hidden items** with a toggle
 - **Create** new folders and files; **rename**; **delete to the Recycle Bin** rather than permanently
 - **Copy, cut, and paste**, including pasting straight into a folder you right-clicked. While something is on the clipboard a paste button appears in the toolbar, so a move still lands on a phone where a full listing leaves no blank strip to long-press
+- **Select several items at once** — `Ctrl`+click, `Shift`+click, and `Ctrl`+`A` on PC; on a phone, **Select multiple** from the long-press menu turns taps into check marks. A bar shows how many are selected, with cut, copy, and delete for all of them. Anything that cannot move — a name already taken at the destination, say — stays on the clipboard to try again
 - **Open Command Prompt or PowerShell in any folder** from its right-click menu on PC or long-press menu on mobile
 - **Copy path** to the clipboard, already quoted for pasting into a shell — a selected item from its right-click menu, the open folder from a toolbar button
 - **Run `.bat` and `.cmd` files** — double-click (or tap) and it opens as a terminal tab

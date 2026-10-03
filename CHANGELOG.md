@@ -14,6 +14,9 @@ Notable changes to TermBridge, newest first.
 - **Line endings and the BOM survive the round trip**, long lines wrap so a phone never
   scrolls sideways, and binaries are refused rather than mangled. Text files up to 512 KB
 - **Copy the open folder's path** from the explorer's address field
+- **Select several files and folders at once** and cut, copy, or delete them together —
+  `Ctrl`+click, `Shift`+click, and `Ctrl`+`A` on PC, **Select multiple** from the long-press
+  menu on a phone. Items that cannot move stay on the clipboard to try again
 - **Open a shell in the folder you are looking at**, straight from the explorer
 - **The command line is edited with the phone's own keyboard** — tap anywhere on it to put
   the cursor there, then insert, delete, and convert text as in any text field, IME

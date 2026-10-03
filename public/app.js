@@ -85,6 +85,8 @@
     exBtnNewDir: $('exBtnNewDir'), exBtnNewFile: $('exBtnNewFile'),
     exBtnCopyPath: $('exBtnCopyPath'), exBtnPaste: $('exBtnPaste'), exBtnClose: $('exBtnClose'),
     exList: $('exList'), exCount: $('exCount'), exMsg: $('exMsg'), exPins: $('exPins'),
+    exSelBar: $('exSelBar'), exSelCount: $('exSelCount'), exSelAll: $('exSelAll'),
+    exSelCut: $('exSelCut'), exSelCopy: $('exSelCopy'), exSelDelete: $('exSelDelete'), exSelDone: $('exSelDone'),
     exCols: [...document.querySelectorAll('.ex-cols button')],
     setBtn: $('setBtn'), wpInput: $('wpInput'), toast: $('toast'),
     wpOpacityDialog: $('wpOpacityDialog'), wpOpacity: $('wpOpacity'),
@@ -1987,10 +1989,14 @@
   try { exShowHidden = localStorage.getItem('termbridge.showHidden') === '1'; } catch {}
   let exParent = null;
   let exEntries = [];
-  let exSel = null;
+  let exSel = null;            // the focused item: rename, open, and arrow keys start here
+  let exAnchor = null;         // where a Shift range starts
+  let exPicked = new Set();    // every selected name, the focused one included
+  let exPickMode = false;      // taps add to the selection instead of opening
+  let exBusy = false;          // a multi-item paste or delete is still running
   const exStack = { back: [], fwd: [] };
   let exSort = { key: 'name', asc: true };
-  let exClip = null;   // { op: 'copy'|'cut', path, name }
+  let exClip = null;   // { op: 'copy'|'cut', dir, names: [] }
   let pendingActivate = null;
 
   const exIcons = {
@@ -2065,6 +2071,7 @@
       if (opts.fallback !== undefined && opts.fallback !== p) return exLoad(opts.fallback, { push: opts.push });
       return;
     }
+    const sameDir = exCur === data.path;
     if (opts.push !== false && exCur !== null && exCur !== data.path) {
       exStack.back.push(exCur);
       exStack.fwd = [];
@@ -2072,7 +2079,16 @@
     exCur = data.path;
     exParent = data.parent;
     exEntries = data.entries;
-    if (!opts.keepSel || !exEntries.some((e) => e.name === exSel)) exSel = null;
+    if (!opts.keepSel || !sameDir) {
+      exSel = exAnchor = null;
+      exPicked = new Set();
+      exPickMode = false;
+    } else {
+      const have = new Set(exEntries.map((e) => e.name));
+      for (const n of exPicked) if (!have.has(n)) exPicked.delete(n);
+      if (!have.has(exSel)) exSel = null;
+      if (!exPicked.size) exPickMode = false;
+    }
     renderEx();
   }
 
@@ -2110,7 +2126,8 @@
     el.exBtnCopyPath.disabled = !exCur;
     el.exBtnPaste.hidden = !exClip || !exCur;
     if (exClip) {
-      el.exBtnPaste.title = i18n.t(exClip.op === 'cut' ? 'ex.pasteMove' : 'ex.pasteCopy', { name: exClip.name });
+      const name = exClip.names.length === 1 ? exClip.names[0] : i18n.t('ex.count', { n: exClip.names.length });
+      el.exBtnPaste.title = i18n.t(exClip.op === 'cut' ? 'ex.pasteMove' : 'ex.pasteCopy', { name });
       el.exBtnPaste.setAttribute('aria-label', el.exBtnPaste.title);
     }
     for (const b of el.exCols) {
@@ -2120,8 +2137,9 @@
     el.exList.textContent = '';
     for (const e of exSorted()) {
       const row = document.createElement('div');
-      row.className = 'ex-row' + (e.name === exSel ? ' selected' : '');
-      if (exClip && exClip.op === 'cut' && exClip.path === exJoin(exCur, e.name)) row.classList.add('cut');
+      row.className = 'ex-row';
+      row.dataset.name = e.name;
+      if (exClip && exClip.op === 'cut' && exClip.dir === exCur && exClip.names.includes(e.name)) row.classList.add('cut');
       const nameCell = document.createElement('div');
       nameCell.className = 'ex-cell-name';
       nameCell.innerHTML = exIconFor(e);
@@ -2154,31 +2172,98 @@
       }
       // On phones, folders and text files open with one tap, but executables
       // and shortcuts require the same deliberate double-click as on a PC.
-      row.addEventListener('click', () => {
+      // Ctrl and Shift pick several items as in Explorer; a phone has no
+      // modifier keys, so it picks through a mode entered from the menu.
+      row.addEventListener('click', (ev) => {
         if (row.dataset.lp) return; // a long-press menu was just shown
-        exSelect(e.name);
-        if (mqMobile.matches && !isRunnable(e.name) && !isLnk(e.name)) exOpen(e);
+        if (ev.shiftKey) {
+          if (!e.drive) exPickRange(e.name);
+        } else if (ev.ctrlKey || ev.metaKey || exPickMode) {
+          if (!e.drive) exTogglePick(e.name);
+        } else {
+          exSelect(e.name);
+          if (mqMobile.matches && !isRunnable(e.name) && !isLnk(e.name)) exOpen(e);
+        }
       });
-      row.addEventListener('dblclick', () => {
+      row.addEventListener('dblclick', (ev) => {
+        if (exPickMode || ev.shiftKey || ev.ctrlKey || ev.metaKey) return;
         if (!mqMobile.matches || isRunnable(e.name) || isLnk(e.name)) exOpen(e);
       });
+      // Opening the menu on an item that is already part of the selection
+      // acts on the whole selection, as it does in Explorer.
+      const menuFor = (x, y) => {
+        if (!exPicked.has(e.name)) {
+          if (exPickMode && !e.drive) exTogglePick(e.name);
+          else exSelect(e.name);
+        }
+        exContextMenu(e, x, y);
+      };
       row.addEventListener('contextmenu', (ev) => {
         ev.preventDefault();
-        exSelect(e.name);
-        exContextMenu(e, ev.clientX, ev.clientY);
+        menuFor(ev.clientX, ev.clientY);
       });
-      attachLongPress(row, (x, y) => { exSelect(e.name); exContextMenu(e, x, y); });
+      attachLongPress(row, menuFor);
       el.exList.appendChild(row);
     }
     el.exCount.textContent = i18n.t('ex.count', { n: exEntries.length });
+    exPaint();
+  }
+
+  // Reflects the selection onto the rows and the selection bar without
+  // rebuilding the list.
+  function exPaint() {
+    for (const r of el.exList.children) r.classList.toggle('selected', exPicked.has(r.dataset.name));
+    el.exList.classList.toggle('picking', exPickMode);
+    el.exSelBar.hidden = !exPickMode && exPicked.size < 2;
+    el.exSelCount.textContent = i18n.t('ex.selCount', { n: exPicked.size });
+    const none = exPickedEntries().length === 0;
+    el.exSelCut.disabled = none;
+    el.exSelCopy.disabled = none;
+    el.exSelDelete.disabled = none;
   }
 
   function exSelect(name) {
+    exSel = exAnchor = name;
+    exPicked = new Set(name === null ? [] : [name]);
+    exPaint();
+  }
+
+  function exTogglePick(name) {
+    if (exPicked.has(name)) exPicked.delete(name);
+    else exPicked.add(name);
+    exSel = exAnchor = name;
+    exPaint();
+  }
+
+  function exPickRange(name) {
+    const names = exSorted().filter((e) => !e.drive).map((e) => e.name);
+    const b = names.indexOf(name);
+    let a = names.indexOf(exAnchor);
+    if (a < 0) { a = b; exAnchor = name; }
+    exPicked = new Set(names.slice(Math.min(a, b), Math.max(a, b) + 1));
     exSel = name;
-    for (const r of el.exList.children) {
-      const span = r.querySelector('.ex-cell-name span');
-      r.classList.toggle('selected', !!span && span.textContent === name);
-    }
+    exPaint();
+  }
+
+  function exPickAll() {
+    exPicked = new Set(exEntries.filter((e) => !e.drive).map((e) => e.name));
+    exPaint();
+  }
+
+  function exStartPick() {
+    exPickMode = true;
+    exPaint();
+  }
+
+  function exEndPick() {
+    exPickMode = false;
+    exSelect(null);
+  }
+
+  // The selected items in the order they are listed. Drives can be opened
+  // but never cut, copied, or deleted, so they never count.
+  function exPickedEntries() {
+    return exSorted().filter((e) => exPicked.has(e.name) && !e.drive);
   }
 
   function exSelEntry() {
@@ -2213,10 +2298,11 @@
     exShowMsg(i18n.t('msg.pathCopied'));
   }
 
+  // Several paths are joined with spaces, ready to paste into a command line.
   function exCopyPath() {
-    const e = exSelEntry();
-    if (!e) return;
-    copyText('"' + exJoin(exCur, e.name) + '"');
+    const items = exPicked.size > 1 ? exPickedEntries() : [exSelEntry()].filter(Boolean);
+    if (!items.length) return;
+    copyText(items.map((e) => '"' + exJoin(exCur, e.name) + '"').join(' '));
     exShowMsg(i18n.t('msg.pathCopied'));
   }
 
@@ -2243,8 +2329,8 @@
 
   function exStartRename() {
     const e = exSelEntry();
-    if (!e || e.drive) return;
-    const row = [...el.exList.children].find((r) => r.classList.contains('selected'));
+    if (!e || e.drive || exPicked.size > 1) return;
+    const row = [...el.exList.children].find((r) => r.dataset.name === e.name);
     const span = row && row.querySelector('.ex-cell-name span');
     if (!span) return;
     const input = document.createElement('input');
@@ -2277,39 +2363,84 @@
     input.addEventListener('dblclick', (ev) => ev.stopPropagation());
   }
 
-  async function exDelete() {
-    const e = exSelEntry();
-    if (!e || e.drive) return;
+  // One request per item, in order, so one failure does not stop the rest.
+  async function exEach(names, fn) {
+    const done = [];
+    const errors = [];
+    exBusy = true;
     try {
-      await fsApi('POST', '/api/fs/delete', { path: exJoin(exCur, e.name) });
-      exShowMsg(i18n.t('msg.trashed'));
-      exRefreshList(false);
-    } catch (err) { exShowMsg(err.message, true); }
+      for (const name of names) {
+        try { done.push(await fn(name)); } catch (e) { errors.push({ name, message: e.message }); }
+      }
+    } finally { exBusy = false; }
+    return { done, errors };
+  }
+
+  function exReport(total, done, errors, oneKey, manyKey) {
+    if (!errors.length) exShowMsg(total === 1 ? i18n.t(oneKey) : i18n.t(manyKey, { n: done }));
+    else if (total === 1) exShowMsg(errors[0].message, true);
+    else exShowMsg(i18n.t('msg.partial', { ok: done, fail: errors.length, name: errors[0].name, err: errors[0].message }), true);
+  }
+
+  async function exDelete() {
+    const items = exPickedEntries();
+    if (!items.length || exBusy) return;
+    const dir = exCur;
+    const { done, errors } = await exEach(items.map((e) => e.name), (name) => fsApi('POST', '/api/fs/delete', { path: exJoin(dir, name) }));
+    exReport(items.length, done.length, errors, 'msg.trashed', 'msg.trashedN');
+    exRefreshList(false);
   }
 
   function exClipSet(op) {
-    const e = exSelEntry();
-    if (!e || e.drive) return;
-    exClip = { op, path: exJoin(exCur, e.name), name: e.name };
-    exShowMsg(i18n.t(op === 'copy' ? 'msg.copy' : 'msg.cut') + e.name);
+    const items = exPickedEntries();
+    if (!items.length) return;
+    exClip = { op, dir: exCur, names: items.map((e) => e.name) };
+    exShowMsg(items.length === 1
+      ? i18n.t(op === 'copy' ? 'msg.copy' : 'msg.cut') + items[0].name
+      : i18n.t(op === 'copy' ? 'msg.copyN' : 'msg.cutN', { n: items.length }));
+    // On a phone the next step is another folder, where taps should open
+    // things again; the faded rows already show what was cut.
+    if (exPickMode) {
+      exPickMode = false;
+      exSel = exAnchor = null;
+      exPicked = new Set();
+    }
     renderEx();
   }
 
   async function exPaste(destDir) {
     const dest = destDir || exCur;
-    if (!exClip || !dest) return;
-    try {
-      const r = await fsApi('POST', exClip.op === 'copy' ? '/api/fs/copy' : '/api/fs/move', { path: exClip.path, dest });
-      if (exClip.op === 'cut') exClip = null;
-      await exLoad(exCur, { push: false });
-      if (dest === exCur) exSelect(r.name);
-      exShowMsg(i18n.t('msg.pasted'));
-    } catch (e) { exShowMsg(e.message, true); }
+    if (!exClip || !dest || exBusy) return;
+    const clip = exClip;
+    const url = clip.op === 'copy' ? '/api/fs/copy' : '/api/fs/move';
+    const { done, errors } = await exEach(clip.names, (name) => fsApi('POST', url, { path: exJoin(clip.dir, name), dest }));
+    // Whatever did not move stays on the clipboard, ready for another try.
+    if (clip.op === 'cut') {
+      const left = errors.map((e) => e.name);
+      exClip = left.length ? { ...clip, names: left } : null;
+    }
+    await exLoad(exCur, { push: false });
+    if (dest === exCur && done.length) {
+      exPicked = new Set(done.map((r) => r.name));
+      exSel = exAnchor = done[done.length - 1].name;
+      exPaint();
+    }
+    exReport(clip.names.length, done.length, errors, 'msg.pasted', 'msg.pastedN');
   }
 
   function exContextMenu(e, x, y) {
     const items = [];
     const full = exJoin(exCur, e.name);
+    if (exPicked.size > 1) {
+      items.push({ label: i18n.t('menu.cut'), action: () => exClipSet('cut') });
+      items.push({ label: i18n.t('menu.copy'), action: () => exClipSet('copy') });
+      items.push({ label: i18n.t('menu.copyPath'), action: () => exCopyPath() });
+      items.push({ label: i18n.t('menu.delete'), action: () => exDelete() });
+      items.push({ label: i18n.t('ex.selAll'), action: () => exPickAll() });
+      items.push({ label: i18n.t('ex.selDone'), action: () => exEndPick() });
+      showMenuItems(items, { x, y });
+      return;
+    }
     if (e.dir) {
       items.push({ icon: e.drive ? exIcons.drive : exIcons.folder, label: i18n.t('menu.open'), action: () => exOpen(e) });
       items.push(...folderShellItems(full));
@@ -2328,6 +2459,7 @@
       items.push({ icon: exIcons.lnk, label: i18n.t('menu.shortcut'), action: () => exCreateShortcut() });
       items.push({ label: i18n.t('menu.rename'), action: () => exStartRename() });
       items.push({ label: i18n.t('menu.delete'), action: () => exDelete() });
+      if (!exPickMode) items.push({ label: i18n.t('menu.selectMany'), action: () => exStartPick() });
     } else {
       items.push(pinnedHas(full)
         ? { label: i18n.t('menu.unpin'), action: () => exUnpin(full) }
@@ -2427,6 +2559,7 @@
       items.push({ label: i18n.t('menu.newFile'), action: () => exCreate('file') });
       items.push({ label: i18n.t('menu.copyCurPath'), action: () => exCopyCurPath() });
       if (exClip) items.push({ label: i18n.t('menu.paste'), action: () => exPaste() });
+      if (exEntries.length) items.push({ label: i18n.t('ex.selAll'), action: () => exPickAll() });
     }
     items.push({ label: i18n.t('menu.refresh'), action: () => exRefreshList() });
     showMenuItems(items, { x, y });
@@ -2496,6 +2629,11 @@
   el.exBtnNewFile.addEventListener('click', () => exCreate('file'));
   el.exBtnCopyPath.addEventListener('click', () => exCopyCurPath());
   el.exBtnPaste.addEventListener('click', () => exPaste());
+  el.exSelAll.addEventListener('click', () => exPickAll());
+  el.exSelCut.addEventListener('click', () => exClipSet('cut'));
+  el.exSelCopy.addEventListener('click', () => exClipSet('copy'));
+  el.exSelDelete.addEventListener('click', () => exDelete());
+  el.exSelDone.addEventListener('click', () => exEndPick());
   el.exBtnBack.addEventListener('click', () => {
     if (exStack.back.length) { exStack.fwd.push(exCur); exLoad(exStack.back.pop(), { push: false }); }
   });
@@ -2542,7 +2680,8 @@
       ev.preventDefault();
       const ni = ev.key === 'ArrowDown' ? Math.min(rows.length - 1, idx + 1) : Math.max(0, idx <= 0 ? 0 : idx - 1);
       if (rows[ni]) {
-        exSelect(rows[ni].name);
+        if (ev.shiftKey && !rows[ni].drive) exPickRange(rows[ni].name);
+        else exSelect(rows[ni].name);
         const rowEl = el.exList.children[ni];
         if (rowEl) rowEl.scrollIntoView({ block: 'nearest' });
       }
@@ -2552,7 +2691,14 @@
     } else if (ev.key === 'F2') exStartRename();
     else if (ev.key === 'Delete') exDelete();
     else if (ev.key === 'Backspace') el.exBtnUp.click();
-    else if (ev.key === 'Escape') setExOpen(false);
+    else if (ev.key === 'Escape') {
+      if (exPickMode || exPicked.size > 1) exEndPick();
+      else setExOpen(false);
+    }
+    else if (ev.ctrlKey && ev.key.toLowerCase() === 'a') {
+      ev.preventDefault();
+      exPickAll();
+    }
     else if (ev.ctrlKey && ev.shiftKey && ev.key.toLowerCase() === 'c') exCopyPath();
     else if (ev.ctrlKey && ev.key.toLowerCase() === 'c') exClipSet('copy');
     else if (ev.ctrlKey && ev.key.toLowerCase() === 'x') exClipSet('cut');
